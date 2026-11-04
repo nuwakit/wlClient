@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 菜单收起：快速淡出，比展开更快以保持干脆 -->
+<alpha xmlns:android="http://schemas.android.com/apk/res/android"
+    android:duration="110"
+    android:fromAlpha="1.0"
+    android:interpolator="@android:interpolator/accelerate_quad"
+    android:toAlpha="0.0" />

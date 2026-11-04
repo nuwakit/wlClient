@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 图标徽标底：浅蓝圆角方块，统一所有菜单项图标的视觉重量 -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="#FFEFF5FD" />
+    <corners android:radius="9dp" />
+</shape>

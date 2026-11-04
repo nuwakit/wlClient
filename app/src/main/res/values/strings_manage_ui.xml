@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 分组管理 / 私钥管理页面与弹窗文案 -->
+<resources>
+    <!-- 列表页概览 -->
+    <string name="manage_total_fmt">共 %1$d 个</string>
+    <string name="manage_drag_hint">拖动排序</string>
+    <string name="grp_summary_groups">分组</string>
+    <string name="grp_summary_keys">账号</string>
+    <string name="key_summary_accounts">账号</string>
+    <string name="key_summary_enabled">已启用</string>
+    <string name="key_summary_groups">分组</string>
+
+    <!-- 空状态 -->
+    <string name="grp_empty_title">还没有分组</string>
+    <string name="grp_empty_msg">点击右下角 + 创建分组，把私钥账号归类管理</string>
+    <string name="key_empty_title">还没有账号</string>
+    <string name="key_empty_msg">点击右下角 + 添加私钥，支持分片粘贴</string>
+
+    <!-- 列表标签 -->
+    <string name="grp_key_pill_fmt">%1$d 个账号</string>
+    <string name="key_master_pill">主号</string>
+    <string name="key_ungrouped_pill">未分组</string>
+
+    <!-- 删除确认 -->
+    <string name="grp_delete_confirm_btn">删除分组</string>
+    <string name="grp_delete_msg_v2_fmt">分组「%1$s」将被删除，%2$s。此操作不可撤销。</string>
+    <string name="grp_delete_has_keys_fmt">组内 %1$d 个账号会保留并归入未分组</string>
+    <string name="grp_delete_no_keys">组内暂无账号</string>
+    <string name="key_delete_confirm_btn">删除账号</string>
+    <string name="key_delete_msg_v2_fmt">账号「%1$s」（%2$s）将从本地移除，且无法恢复。</string>
+
+    <!-- 弹窗 -->
+    <string name="dialog_add_key_subtitle_v2">手动粘贴私钥，可拆成两段依次填入</string>
+    <string name="dialog_edit_key_subtitle">修改编号、所属分组，或将账号设为主号</string>
+    <string name="key_add_btn">添加</string>
+
+    <!-- 解密密码说明 -->
+    <string name="cd_pwd_help">解密密码说明</string>
+    <string name="pwd_help_btn">密码说明</string>
+    <string name="dialog_pwd_help_title">关于解密密码</string>
+    <string name="dialog_pwd_help_msg">执行批量操作前需要输入解密密码，用于在本机内存中解开私钥，密码不会上传或保存。|常见情况：|· 提示密码错误：注意大小写、输入法全角字符和首尾空格；|· 想更换密码：在私钥管理右上角点击锁形按钮，选择「修改加解密密码」（需输入旧密码）；|· 忘记密码：无法找回，只能清空后重新导入私钥。</string>
+    <string name="pwd_help_go_manage">去私钥管理</string>
+</resources>

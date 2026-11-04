@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 浅橙提示按钮：警示语义但非破坏性操作 -->
+<ripple xmlns:android="http://schemas.android.com/apk/res/android"
+    android:color="#33FF9800">
+    <item>
+        <shape android:shape="rectangle">
+            <corners android:radius="8dp" />
+            <solid android:color="#FFFFF4E5" />
+        </shape>
+    </item>
+</ripple>

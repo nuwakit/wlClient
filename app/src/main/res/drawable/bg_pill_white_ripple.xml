@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 标题栏上的半透明胶囊入口：复用 bg_pill_translucent 形状，叠一层白色涟漪做点击反馈 -->
+<ripple xmlns:android="http://schemas.android.com/apk/res/android"
+    android:color="#40FFFFFF">
+    <item android:drawable="@drawable/bg_pill_translucent" />
+</ripple>

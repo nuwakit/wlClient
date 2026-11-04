@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    主界面标题栏文案（activity_main）。
+
+    单独成文件的原因：strings.xml 里有多条含 \n 转义的多行提示，
+    用脚本/工具做整文件替换容易把这些转义改写成真实换行，从而破坏原文案；
+    新增文案放在独立文件里，改动面为零。
+-->
+<resources>
+
+    <!-- 胶囊入口：原「⚠安全提醒」的 emoji 由 ic_warning_pill 图标承担，文字只留标签 -->
+    <string name="main_btn_security_warn">安全提醒</string>
+
+    <!-- 标题栏副标题：六种状态由 refreshStatusSubtitle() 切换 -->
+    <string name="main_status_loading">正在加载本地清单…</string>
+    <string name="main_status_empty">暂无账号 · 点右上角齿轮导入</string>
+    <string name="main_status_syncing">链上数据同步中…</string>
+    <string name="main_status_ready">%1$d/%2$d 账号已启用</string>
+    <string name="main_status_failed">链上数据获取失败 · 点汇总卡片重试</string>
+    <string name="main_status_running">任务执行中，请勿退出</string>
+    <!-- 会话已锁定：副标题兼作解锁入口，点一下就地输密码，不需要重启 App -->
+    <string name="main_status_locked">已锁定 · 点此输入密码解锁</string>
+
+    <!-- 齿轮菜单顶部的只读提示：任务跑着时只有「看日志/锦标赛统计」可用，其余项置灰 -->
+    <string name="menu_readonly_hint">任务运行中，只可查看日志与统计；其余入口等收工后再用</string>
+
+    <!--
+        账号行橙条提示（AccountStatsAdapter）：今日场次 / 满勤场次 / 师徒分成解锁百分比。
+        只在该号「已开打且未打满」时显示，0 场与打满都不显示。
+    -->
+    <string name="stats_lineage_hint_fmt">今日 %1$d/%2$d 场 · 师徒分成仅解锁 %3$d%%，打满才全额，过期销毁</string>
+
+</resources>

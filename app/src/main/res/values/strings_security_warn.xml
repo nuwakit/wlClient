@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 主界面「安全提醒」弹窗 -->
+    <string name="sec_warn_subtitle">本工具不是硬件钱包，请确认以下风险。</string>
+    <string name="sec_warn_item1_title">不要存放大额资产私钥</string>
+    <string name="sec_warn_item1_desc">私钥加密后保存在本机，软件钱包无法做到硬件级隔离，请只存放参与活动的小额资产。</string>
+    <string name="sec_warn_item2_title">手机 Root 后私钥可能被读取</string>
+    <string name="sec_warn_item2_desc">已 Root 的设备可能被恶意程序提权读取应用数据，加密也无法保证私钥绝对安全。</string>
+    <string name="sec_warn_item3_title">解密密码只在内存中使用</string>
+    <string name="sec_warn_item3_desc">密码不会写入本机存储，关闭 APP 后即从内存清除，再次使用需要重新输入。</string>
+    <string name="sec_warn_item4_title">自动清除可能延迟</string>
+    <string name="sec_warn_item4_desc">系统省电与后台限制会推迟清除时间；重新打开 APP 会立即校验并执行清除。</string>
+    <string name="sec_warn_tip">建议解密密码至少 10 位，最好 12 位以上，并混合大小写、数字与符号，避免生日、手机号等易猜内容。</string>
+    <string name="sec_warn_btn_strength">密码强度说明</string>
+</resources>

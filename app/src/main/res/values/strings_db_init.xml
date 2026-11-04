@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 系统配置 - 初始化数据库：危险操作专用文案，独立文件避免影响主 strings.xml -->
+<resources>
+    <string name="db_init_section_title">数据维护</string>
+    <string name="db_init_entry_desc">清空运行数据并重建表结构，用于修复统计或日志异常；私钥、分组与系统配置不受影响。</string>
+    <string name="db_init_button">立即初始化</string>
+    <string name="db_init_dialog_subtitle">将清空运行数据并重建数据表，用于修复统计或日志显示异常。</string>
+    <string name="db_init_scope_title">将被清空并重建的数据</string>
+    <string name="db_init_scope_daily">• 当日状态（打卡与入场次数）</string>
+    <string name="db_init_scope_failure">• 失败日志</string>
+    <string name="db_init_scope_tasklog">• 操作日志</string>
+    <string name="db_init_keep_note">私钥、分组信息与系统配置不受影响</string>
+    <string name="db_init_irreversible">此操作不可撤销，历史统计与失败记录将无法恢复，请谨慎操作。</string>
+    <string name="db_init_confirm">确认初始化</string>
+    <string name="db_init_running">正在初始化…</string>
+</resources>

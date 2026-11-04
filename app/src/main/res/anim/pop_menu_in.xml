@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 菜单展开：自右上角轻微放大淡入，贴近大厂菜单的手感 -->
+<set xmlns:android="http://schemas.android.com/apk/res/android"
+    android:interpolator="@android:interpolator/decelerate_cubic"
+    android:shareInterpolator="true">
+
+    <alpha
+        android:duration="150"
+        android:fromAlpha="0.0"
+        android:toAlpha="1.0" />
+
+    <scale
+        android:duration="190"
+        android:fromXScale="0.94"
+        android:fromYScale="0.94"
+        android:pivotX="100%"
+        android:pivotY="0%"
+        android:toXScale="1.0"
+        android:toYScale="1.0" />
+
+    <translate
+        android:duration="190"
+        android:fromYDelta="-8dp"
+        android:toYDelta="0" />
+</set>

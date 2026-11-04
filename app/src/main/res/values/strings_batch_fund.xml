@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 批量充值：查询与结果提示 -->
+    <string name="fund_loading_title">正在查询余额</string>
+    <string name="fund_loading_msg">正在读取各启用账户的链上余额，请稍候…</string>
+    <string name="fund_loading_progress_fmt">已查询 %1$d / %2$d 个账号，请稍候…</string>
+    <string name="fund_no_need_title">无需充值</string>
+    <string name="fund_no_need_msg_v2">所有启用账户的余额均已达到入场要求，暂时不需要充值。</string>
+    <string name="fund_query_fail_title">查询失败</string>
+    <string name="fund_query_fail_msg_fmt">无法读取链上余额：%1$s&#10;请检查网络连接后重试。</string>
+    <string name="fund_go_settings">去设置</string>
+    <string name="btn_retry">重试</string>
+
+    <!-- 批量充值：确认页 -->
+    <string name="fund_hero_count_fmt">共 %1$d 个账户</string>
+    <string name="fund_hero_payer_hint">由主号统一支付</string>
+    <string name="fund_master_tag">主号</string>
+    <string name="fund_master_payer_pill">支付方</string>
+    <string name="fund_master_transfer_hint">资金转出账户</string>
+    <string name="fund_balance_short">余额</string>
+    <string name="fund_master_insufficient_fmt">主号余额不足：还差 %1$s fLGNS，转账可能失败</string>
+    <string name="fund_detail_title">充值明细</string>
+    <string name="fund_detail_count_fmt">共 %1$d 个账户</string>
+    <string name="fund_item_balance_fmt">当前 %1$s</string>
+    <string name="fund_need_short">需充值</string>
+    <!-- 本地数据先行：链上金额未回时先用占位文案 -->
+    <string name="fund_item_querying">查询中…</string>
+    <string name="fund_item_query_failed">查询失败</string>
+    <string name="fund_progress_pill_fmt">%1$d / %2$d</string>
+    <!-- 降级通道：RPC 全挂时余额改由 Blockscout 浏览器查得 -->
+    <string name="fund_degraded_tip">⚠ RPC 节点暂不可达，余额来自官方浏览器备用通道，数值可信但可能滞后几分钟；转账仍会等节点恢复后才能执行</string>
+</resources>

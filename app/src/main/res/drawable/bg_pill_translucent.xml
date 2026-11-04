@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 深色/彩色卡片与标题栏上的半透明胶囊标签。
+     用 25% 黑而不是 20% 白：白字压在 #1976D2 蓝底 + 半透明白上对比度只有 3.3:1，
+     过不了 WCAG 4.5:1（Android Studio 会报 Insufficient text color contrast ratio）；
+     换成半透明黑压深底色后同一组白字到 7.2:1，视觉上仍是「凹陷一档」的胶囊。 -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="#40000000" />
+    <corners android:radius="99dp" />
+</shape>
