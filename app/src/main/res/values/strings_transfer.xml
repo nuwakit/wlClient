@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 支付方「转账记录」列表页 + 「交易详情」页文案（数据源：Blockscout 只读接口）
+     键统一用 txn_ 前缀，避免与 strings_recharge.xml 里已有的 transfer_* 撞名 -->
+<resources>
+
+    <!-- 行尾图标与入口 -->
+    <string name="txn_cd_query">查看转账记录</string>
+    <string name="txn_no_address">该支付方没有可用地址</string>
+
+    <!-- 列表页 -->
+    <string name="txn_title_list">转账记录</string>
+    <string name="txn_list_subtitle_fmt">%1$s · 共 %2$d 笔</string>
+    <string name="txn_loading">正在查询链上记录…</string>
+    <string name="txn_load_failed_fmt">查询失败：%1$s</string>
+    <string name="txn_empty_title">暂无转账记录</string>
+    <string name="txn_empty_msg">该地址近期没有 ERC-20 代币转账</string>
+    <string name="txn_incoming">收到</string>
+    <string name="txn_outgoing">付出</string>
+
+    <!-- 详情页 -->
+    <string name="txn_title_detail">交易详情</string>
+    <string name="txn_from">发款方</string>
+    <string name="txn_to">收款方</string>
+    <string name="txn_token">代币</string>
+    <string name="txn_amount">金额</string>
+    <string name="txn_fee">网络费</string>
+    <string name="txn_status">状态</string>
+    <string name="txn_hash">哈希值</string>
+    <string name="txn_block">区块号</string>
+    <string name="txn_confirmations">确认数</string>
+    <string name="txn_time">交易时间</string>
+    <string name="txn_query_link">查询链接</string>
+    <string name="txn_fee_unit">gasDAI</string>
+    <string name="txn_status_ok">成功</string>
+    <string name="txn_status_error">失败</string>
+    <string name="txn_status_pending">进行中</string>
+    <string name="txn_open_browser">在浏览器打开</string>
+
+    <!-- 复制 -->
+    <string name="txn_cd_copy">复制</string>
+    <string name="txn_copied_fmt">已复制%1$s</string>
+    <string name="txn_clip_label">交易信息</string>
+</resources>

@@ -89,5 +89,15 @@
             android:name=".ui.activity.BatchTransferActivity"
             android:exported="false"
             android:label="批量转账" />
+
+        <activity
+            android:name=".ui.activity.TransferListActivity"
+            android:exported="false"
+            android:label="@string/txn_title_list" />
+
+        <activity
+            android:name=".ui.activity.TransferDetailActivity"
+            android:exported="false"
+            android:label="@string/txn_title_detail" />
     </application>
 </manifest>

@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 菜单 -->
+    <string name="title_recharge_manage">充值管理</string>
+    <string name="title_batch_recharge">批量充值</string>
+    <string name="title_batch_gas_fund">批量充值手续费</string>
+    <string name="title_transfer_manage">转账管理</string>
+    <string name="title_address_manage">接收方管理</string>
+    <string name="title_batch_transfer">批量转账</string>
+    <string name="title_payer_manage">支付方管理</string>
+
+    <!-- 批量充值手续费 -->
+    <!-- 单位：本链手续费币是 ERC20 DAI（18 位小数），界面金额一律标 DAI，不写 Gas -->
+    <string name="gas_fund_unit">DAI</string>
+    <string name="gas_fund_total_label">合计还需补入</string>
+    <string name="gas_fund_header_total_fmt">合计还需补入 %1$s DAI</string>
+    <string name="gas_fund_total_value_fmt">%1$s DAI</string>
+    <string name="gas_fund_footer_fmt">需充值 %1$d 笔 · 合计 %2$s DAI</string>
+    <string name="gas_fund_need_fmt">+%1$s DAI</string>
+    <string name="gas_fund_enough">余额已够</string>
+    <string name="gas_fund_payer_label">出资主号</string>
+    <string name="gas_fund_payer_balance_fmt">主号 DAI %1$s</string>
+    <string name="gas_fund_row_edit">修改本行金额</string>
+    <string name="gas_fund_detail_title">账号明细</string>
+    <string name="gas_fund_default_line_fmt">默认每号 %1$s DAI</string>
+    <string name="gas_fund_detail_count_fmt">共 %1$d 个启用账号</string>
+    <string name="gas_fund_balance_fmt">当前 %1$s DAI</string>
+    <string name="gas_fund_default_title">默认充值金额</string>
+    <string name="gas_fund_default_msg">手续费币是 DAI。修改后，未手动改过的行都按此值重算</string>
+    <string name="gas_fund_default_saved_fmt">默认金额已设为 %1$s DAI</string>
+    <string name="gas_fund_edit_title">修改本行金额</string>
+    <string name="gas_fund_edit_msg_fmt">账号 %1$s · 目标 %2$s DAI，留空则恢复默认</string>
+    <string name="gas_fund_progress_fmt">已查询 %1$d/%2$d</string>
+    <string name="gas_fund_no_account">没有可充值的账号，请先在私钥管理启用账号</string>
+    <string name="gas_fund_err_amount">请输入大于 0 的金额（最多 18 位小数）</string>
+    <string name="gas_fund_master_insufficient_fmt">主号 DAI 还差 %1$s（已含 %2$d 笔转账网络费）</string>
+    <string name="gas_fund_fail_title">充值未执行</string>
+    <string name="gas_fund_result_title">充值完成</string>
+    <string name="gas_fund_done_fmt">成功 %1$d 笔，失败 %2$d 笔</string>
+    <string name="btn_gas_confirm">确认充值</string>
+    <string name="cd_gas_default">设置默认充值金额（DAI）</string>
+    <string name="cd_gas_cost_info">每月手续费说明</string>
+    <string name="gas_cost_title">每号每月的手续费（DAI）</string>
+    <!-- 数据来源：近期 320 个块、共 1.3 万笔上链交易的中位数（入场 179,205 / 甲子 138,662 / Lineage 98,208 / 奖励 61,169），
+         gas 单价按当前 12 gwei；每日上限取自合约 MAX_ENTRIES_PER_DAY = 12 -->
+    <string name="gas_cost_body" formatted="false">按每号每天打满 12 场、gas 单价 12 gwei 估算：\n入场 179,205 gas/场 ≈ 0.00215 DAI\n→ 12 场/天 ≈ 0.026 DAI，30 天 ≈ 0.77 DAI\n领取每笔实测：奖励 61,169、血脉 98,208、甲子 138,662 gas\n甲子按天释放，每天领 1 次即可，重复领会失败白烧 gas\n① 每天各领 1 次：领取约 0.11 DAI/月，合计 0.88 DAI/月\n② 每场打完结一次（奖励+血脉共 24 笔）\n　 领取约 0.69 DAI/月，合计 1.46 DAI/月\n失败交易同样扣手续费（近期入场失败率约 27%），建议再上浮 30%。\n默认 5 DAI：按 ① 约 5 个月，按 ② 约 3 个月。</string>
+
+    <!-- 接收方管理：比例与数额是两套互斥的分配口径，由系统配置页的「批量转账」选一个 -->
+    <string name="addr_add_title">新增接收方</string>
+    <string name="addr_edit_title">编辑接收方</string>
+    <string name="addr_hint_address">接收方地址</string>
+    <string name="addr_hint_code">自编号（可留空）</string>
+    <string name="addr_group_label">所属分组</string>
+    <string name="addr_group_none">（不分组）</string>
+    <string name="addr_ratio_label">收益比例</string>
+    <string name="addr_ratio_suffix">%</string>
+    <string name="addr_ratio_total_fmt">已分配 %1$s%% · 剩余 %2$s%%</string>
+    <string name="addr_ratio_overflow_fmt">启用地址比例合计不能超过 100%%，当前已分配 %1$s%%</string>
+    <string name="addr_amount_label">收益数额</string>
+    <string name="addr_amount_suffix">fLGNS</string>
+    <string name="addr_amount_total_fmt">数额合计 %1$s fLGNS</string>
+    <!-- 新增接收方的默认值：比例与数额在同一个弹窗里一次填完（dialog_address_defaults.xml） -->
+    <string name="addr_defaults_title">新增接收方默认值</string>
+    <string name="addr_defaults_msg">点 + 添加时按下面两项预填，不影响已有记录</string>
+    <string name="addr_defaults_saved">默认值已保存</string>
+    <string name="addr_field_empty_fmt">%1$s不能为空</string>
+    <string name="addr_empty">还没有接收方，点右下角 + 添加</string>
+    <string name="addr_delete_title">删除接收方</string>
+    <string name="addr_delete_msg_fmt">确认删除接收方 %1$s ？</string>
+    <string name="err_invalid">地址格式不正确</string>
+    <string name="err_duplicate">该地址已存在</string>
+    <string name="cd_ratio_default">设置新增接收方的默认比例与默认数额</string>
+    <string name="cd_add_address">添加接收方</string>
+
+    <!-- 支付方管理 -->
+    <string name="payer_add_title">新增支付方</string>
+    <string name="payer_edit_title">编辑支付方</string>
+    <string name="payer_add_subtitle">手动粘贴私钥，可拆成两段依次填入</string>
+    <string name="payer_edit_subtitle">修改编号与分组，或指定为主支付方</string>
+    <string name="payer_add_btn">添加</string>
+    <string name="payer_empty_title">还没有支付方</string>
+    <string name="payer_empty_msg">点击右下角 + 添加支付方私钥\n批量转账从这里出资</string>
+    <string name="payer_summary_total">支付方</string>
+    <string name="payer_summary_enabled">已启用</string>
+    <string name="payer_summary_groups">分组</string>
+    <string name="payer_master_pill">主支付方</string>
+    <string name="payer_label_set_master">设为主支付方（批量转账按系统配置的方式分配它的 fLGNS）</string>
+    <string name="payer_set_master_done">已设为主支付方</string>
+    <string name="payer_delete_title">删除支付方</string>
+    <string name="payer_delete_msg_fmt">支付方「%1$s」（%2$s）将被移除，私钥副本无法恢复。</string>
+    <string name="payer_delete_confirm_btn">删除支付方</string>
+    <string name="payer_master_cleared_on_delete">✅ 已删除，支付方设置同时清除</string>
+    <string name="payer_err_pwd_mismatch">支付方加密密码不正确，请输入支付方管理里设置的密码</string>
+    <string name="payer_change_pwd_title">修改支付方密码</string>
+    <string name="payer_change_pwd_subtitle">所有支付方密文将用新密码重加密，与私钥管理密码互不影响</string>
+    <string name="payer_change_pwd_success_fmt">✅ 修改成功，共重加密 %1$d 个支付方</string>
+    <string name="payer_pwd_hint_label">支付方独立密码</string>
+    <string name="payer_decrypt_pwd_title">输入支付方密码</string>
+    <string name="payer_decrypt_pwd_subtitle">支付方与私钥管理各用一套密码，请输支付方管理里的密码</string>
+    <string name="err_input_empty">内容不能为空</string>
+    <string name="cd_add_payer">添加支付方</string>
+
+    <!-- 批量转账（对标批量充值：都是转 fLGNS，支持按支付方余额的比例或按收款方数额分配） -->
+    <string name="transfer_balance_short">支付方余额</string>
+    <string name="transfer_total_short">可分配总额</string>
+    <string name="transfer_total_short_amount">累计需转出</string>
+    <string name="transfer_ratio_line_fmt">比例合计 %1$s%% · 剩余 %2$s%%</string>
+    <string name="transfer_amount_line_fmt">数额合计 %1$s fLGNS · 支付方余额 %2$s fLGNS</string>
+    <string name="transfer_detail_count_fmt">共 %1$d 个接收方</string>
+    <string name="transfer_detail_querying_fmt">查询中 %1$d/%2$d</string>
+    <string name="transfer_detail_title">接收方明细</string>
+    <string name="transfer_payer_label">支付方</string>
+    <string name="transfer_payer_pill">主支付方</string>
+    <string name="transfer_payer_unset">未设置</string>
+    <string name="transfer_amount_querying">查询中…</string>
+    <string name="transfer_payer_tip_unset">还没有设置主支付方，点右上角齿轮去支付方管理添加</string>
+    <string name="transfer_payer_tip_no_balance">支付方 fLGNS 余额为 0，无法按比例分配</string>
+    <string name="transfer_payer_tip_no_balance_amount">支付方 fLGNS 余额为 0，转不出收款方的累计数额</string>
+    <string name="transfer_amount_zero_tip">所有启用收款方的收益数额都是 0，没有要转出的金额，请先到收款方管理填写</string>
+    <string name="transfer_payer_tip_query_fail">支付方余额查询失败，暂时算不出每笔金额，请重试</string>
+    <string name="transfer_payer_tip_gas_fmt">支付方 DAI 余额不足，付不起这 %1$d 笔转账的手续费，请先到「批量充值手续费」补一点</string>
+    <!-- 按数额模式的硬校验：累计数额不得大于支付方余额，超出就拦下不执行 -->
+    <string name="transfer_payer_tip_over_fmt">收款方累计数额 %1$s fLGNS 大于支付方余额 %2$s fLGNS，还差 %3$s，请先调小数额或先充值</string>
+    <string name="transfer_over_title">累计数额超过余额</string>
+    <string name="transfer_over_msg_fmt">收款方累计需转出 %1$s fLGNS，支付方只有 %2$s fLGNS，还差 %3$s。\n\n按数额分配不会自动少转，所以整批不会执行。可选：调小接收方管理里的收益数额、停用几个接收方，或先给支付方充够 fLGNS。</string>
+    <string name="transfer_row_ratio_fmt">比例 %1$s%%</string>
+    <string name="transfer_row_amount_fmt">数额 %1$s fLGNS</string>
+    <string name="transfer_no_address">没有启用的接收方，请先到接收方管理添加</string>
+    <string name="transfer_no_payer">还没有设置主支付方</string>
+    <string name="transfer_state_loading_title">正在读取接收方…</string>
+    <string name="transfer_state_loading_msg">先展示本地名单，再向链上查询支付方余额</string>
+    <string name="transfer_state_empty_title">没有可转账的接收方</string>
+    <string name="transfer_state_empty_msg">接收方管理里启用地址并设置收益比例或收益数额后，这里会按系统配置选定的方式分配</string>
+    <string name="transfer_go_address">去接收方管理</string>
+    <string name="transfer_running">转账中…</string>
+    <string name="btn_transfer_confirm">确认转账</string>
+    <string name="transfer_done_fmt">成功 %1$d 笔，失败 %2$d 笔，详情见运行日志</string>
+    <string name="transfer_fail_title">转账未执行</string>
+    <string name="transfer_result_title">转账完成</string>
+    <string name="cd_manage_payer">打开支付方管理</string>
+</resources>
