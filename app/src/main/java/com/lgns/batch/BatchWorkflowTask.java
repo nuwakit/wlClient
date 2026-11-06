@@ -15,10 +15,10 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 完整流程编排：把「充值 → 入场 → 领取」串成一次可中断、可续跑的批量作业。
+ * 完整流程编排：把「充值 → 入场 → 领取 → 铸造」串成一次可中断、可续跑的批量作业。
  *
  * <p>本类只做步骤调度、等待、预检与取消检查，具体动作全部委托给
- * {@link BatchFundTask}、{@link BatchEnterTask}、{@link BatchClaimTask}，
+ * {@link BatchFundTask}、{@link BatchEnterTask}、{@link BatchClaimTask}、{@link BatchMintTask}，
  * 自身不直接发交易，也不读写进度存储。</p>
  *
  * <p>每一步都会检查取消标记：用户中途取消时只停止后续步骤，已完成的部分不回滚。</p>
@@ -36,7 +36,7 @@ public class BatchWorkflowTask {
     // region 工作流入口
 
     /**
-     * 完整流程：充值 → 等待入账 → 入场（按 {@link ArenaConfig#enterRounds} 圈）→ 等待结算 → 领取。
+     * 完整流程：充值 → 等待入账 → 入场（按 {@link ArenaConfig#enterRounds} 圈）→ 等待结算 → 领取 → 铸造盟主令。
      *
      * <p>两处等待等的是「节点间可见性」，不是交易本身：{@link BatchFundTask} 与
      * {@link BatchEnterTask} 对每笔交易都会等到回执才返回，回到这里时交易已经上链。
@@ -72,10 +72,12 @@ public class BatchWorkflowTask {
         // 24 座，已入座的号的押金还要等到封盘才能结算；所以跳过入场，直接进领取
         // （甲子俸与师徒分成不领就会进烧毁队列，那一段不管用户怎么停都要跑）。
         if (Web3AndroidUtil.isStopRequested()) {
-            callback.onLog("", "", "⏸ 已按要求停止：充值阶段中断，跳过入场（领取照常执行）");
+            callback.onLog("", "", "⏸ 已按要求停止：充值阶段中断，跳过入场（领取/铸造照常执行）");
             BatchEnterTask.enterFailedAddrSet.clear();
             callback.onLog("", "CLAIM", "完整流程 · 第3步：批量领取");
             BatchClaimTask.batchClaimAllResume(ctx, callback, playMode, selectedList, sessionCryptoKey);
+            callback.onLog("", "MINT", "完整流程 · 第4步：批量铸造");
+            BatchMintTask.batchMintAllResume(ctx, callback, selectedList, sessionCryptoKey);
             callback.onLog("", "", "完整流程结束");
             return;
         }
@@ -130,6 +132,12 @@ public class BatchWorkflowTask {
         callback.onLog("", "CLAIM", "完整流程 · 第3步：批量领取");
         BatchClaimTask.batchClaimAllResume(ctx, callback, playMode, selectedList, sessionCryptoKey);
         BatchEnterTask.enterFailedAddrSet.clear();
+
+        // 铸造紧跟领取：两者打的是不同合约（arena 主合约 vs ChampionMandate NFT），
+        // 不需等待结算——可铸清单只含领讫且满 60 天的俸禄，本轮新领的不进清单，
+        // callMintableIndices 会自己筛；用户在领取阶段按过停止，这里首个取消检查就自然跳出
+        callback.onLog("", "MINT", "完整流程 · 第4步：批量铸造");
+        BatchMintTask.batchMintAllResume(ctx, callback, selectedList, sessionCryptoKey);
 
         callback.onLog("", "", "完整流程结束");
     }

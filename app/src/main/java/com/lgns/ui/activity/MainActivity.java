@@ -22,6 +22,7 @@ import com.lgns.model.KeyListItem;
 import com.lgns.batch.BatchFundTask;
 import com.lgns.batch.BatchEnterTask;
 import com.lgns.batch.BatchClaimTask;
+import com.lgns.batch.BatchMintTask;
 import com.lgns.batch.BatchWorkflowTask;
 import com.lgns.ui.adapter.AccountStatsAdapter;
 import com.lgns.manager.KeyStoreManager;
@@ -55,7 +56,8 @@ import java.util.Map;
  *
  * <p>三项职责：</p>
  * <ul>
- *   <li>触发批量充值、批量入场、批量领取与完整流程，并按任务运行状态回落按钮可用性；</li>
+ *   <li>触发批量入场、批量领取、批量铸造与完整流程，并按任务运行状态回落按钮可用性
+ *       （批量充值入口已收进齿轮菜单，由完整流程第 1 步与菜单单独触发）；</li>
  *   <li>聚合同步链上统计（收益、场次等），同步期间用进度条与同步栏反馈进度；</li>
  *   <li>作为 {@link TaskLogCallback} 接收各任务日志，按账号归档后追加到页面。</li>
  * </ul>
@@ -101,10 +103,17 @@ public class MainActivity extends BaseActivity implements TaskLogCallback, Batch
     private TextView btnSecurityWarn;
     /** 标题栏副标题：加载/同步/就绪/失败/运行中，与按钮门控同源 */
     private TextView tvStatusSub;
-    private LinearLayout btnBatchFund, btnBatchEnter, btnBatchClaim, btnFullWorkflow;
-    /** 四个批量按钮的运行态视图：运行中要拿「正在跑的那个」当停止键用 */
+    private LinearLayout btnBatchEnter, btnBatchClaim, btnBatchMint, btnFullWorkflow;
+    /** 四个可见批量按钮的运行态视图：运行中要拿「正在跑的那个」当停止键用 */
     private final List<TaskButton> taskButtons = new ArrayList<>(4);
-    private TaskButton tbFund, tbEnter, tbClaim, tbWorkflow;
+    /**
+     * 充值/入场/领取/铸造/完整流程五个任务的运行态标记。
+     *
+     * <p>tbFund 不再对应任何主界面控件（充值按钮已移除，入口只剩齿轮菜单→确认页→
+     * {@code onActivityResult} 回传）：它只作 {@code activeTaskButton} 的标记用，
+     * 不进 {@code taskButtons} 列表，因此充值期间四个可见按钮全部置灰、无就地停止出口。</p>
+     */
+    private TaskButton tbFund, tbEnter, tbClaim, tbMint, tbWorkflow;
     /** 当前正在跑的那个按钮：运行中只有它可点，点一下 = 打完这一圈再停 */
     private volatile TaskButton activeTaskButton;
     /** 本次运行是否已经按过停止：按下后按钮切「停止中」并禁用，避免连点刷日志 */
@@ -244,9 +253,9 @@ public class MainActivity extends BaseActivity implements TaskLogCallback, Batch
         btnSettingGear = findViewById(R.id.btn_setting_gear);
         btnSecurityWarn = findViewById(R.id.btn_security_warn);
         tvStatusSub = findViewById(R.id.tv_status_sub);
-        btnBatchFund = findViewById(R.id.btn_batch_fund);
         btnBatchEnter = findViewById(R.id.btn_batch_enter);
         btnBatchClaim = findViewById(R.id.btn_batch_claim);
+        btnBatchMint = findViewById(R.id.btn_batch_mint);
         btnFullWorkflow = findViewById(R.id.btn_full_workflow);
         bindTaskButtons();
         tvLog = findViewById(R.id.tv_log);
@@ -268,17 +277,19 @@ public class MainActivity extends BaseActivity implements TaskLogCallback, Batch
      */
     private void bindTaskButtons() {
         taskButtons.clear();
-        tbFund = new TaskButton(btnBatchFund, findViewById(R.id.tv_btn_fund_label),
-                R.string.title_batch_fund, btnBatchFund.getBackgroundTintList(), false);
+        // 充值已无主界面按钮：只建无视图标记，保持 onActivityResult 回传链路的 beginTask 语义
+        tbFund = new TaskButton(null, null, R.string.title_batch_fund, null, false);
         tbEnter = new TaskButton(btnBatchEnter, findViewById(R.id.tv_btn_enter_label),
                 R.string.common_btn_batch_enter, btnBatchEnter.getBackgroundTintList(), true);
         tbClaim = new TaskButton(btnBatchClaim, findViewById(R.id.tv_btn_claim_label),
                 R.string.common_btn_batch_claim, btnBatchClaim.getBackgroundTintList(), false);
+        tbMint = new TaskButton(btnBatchMint, findViewById(R.id.tv_btn_mint_label),
+                R.string.common_btn_batch_mint, btnBatchMint.getBackgroundTintList(), false);
         tbWorkflow = new TaskButton(btnFullWorkflow, findViewById(R.id.tv_btn_workflow_label),
                 R.string.common_btn_full_workflow, btnFullWorkflow.getBackgroundTintList(), true);
-        taskButtons.add(tbFund);
         taskButtons.add(tbEnter);
         taskButtons.add(tbClaim);
+        taskButtons.add(tbMint);
         taskButtons.add(tbWorkflow);
     }
 
@@ -301,9 +312,9 @@ public class MainActivity extends BaseActivity implements TaskLogCallback, Batch
         scrollView.setVisibility(View.VISIBLE);
 
         // 四个按钮的统一入口：空闲时各自开活；运行中点「正在跑的那个」= 打完这圈再停
-        btnBatchFund.setOnClickListener(v -> onTaskButtonClick(this::handleBatchFundClick));
         btnBatchEnter.setOnClickListener(v -> onTaskButtonClick(this::handleBatchEnterClick));
         btnBatchClaim.setOnClickListener(v -> onTaskButtonClick(this::handleBatchClaimClick));
+        btnBatchMint.setOnClickListener(v -> onTaskButtonClick(this::handleBatchMintClick));
         btnFullWorkflow.setOnClickListener(v -> onTaskButtonClick(this::handleFullWorkflowClick));
 
         // 统计加载失败时，汇总栏兼作重试入口（其他状态下点按无副作用）
@@ -349,12 +360,13 @@ public class MainActivity extends BaseActivity implements TaskLogCallback, Batch
     // region 批量任务入口
 
     /**
-     * 批量充值入口。四个批量按钮共用同一套前置检查：
-     * 任务互斥（避免两批交易抢同一批 nonce）→ 数据就绪 → 取启用账号 → 密码弹窗 → 后台线程执行。
+     * 批量铸造：与领取同一套外壳（互斥 → 就绪 → 启用账号 → 密码 → 后台执行），
+     * 具体铸哪几枚、按什么批次铸由 {@link BatchMintTask} 决定。
      *
-     * <p>密码弹窗阶段不锁按钮：用户取消或输错密码都不应该把界面卡住，校验通过后才锁定。</p>
+     * <p>铸造打的是独立 ChampionMandate NFT 合约，可铸清单只含「领讫且满 60 天」的俸禄，
+     * 刚领完不会立刻多出一枚，所以点之前不必先跑领取。</p>
      */
-    private void handleBatchFundClick() {
+    private void handleBatchMintClick() {
         // 两层门「本地先判、全局后判」：先看本页 isTaskRunning（快，且能提示“本页正在跑”），
         // 再靠短路求值判跨页闸门（详情页单号任务可能还在跑，本页看不到它，不判就会并发签名）
         if (isTaskRunning || AppGlobal.isTaskBusy()) {
@@ -362,7 +374,27 @@ public class MainActivity extends BaseActivity implements TaskLogCallback, Batch
             return;
         }
         if (!ensureAccountDataReady()) return;
-        dialogHelper.showBatchFundDialog();
+        List<KeyListItem> enabledList = getEnabledKeyItems();
+        if (enabledList.isEmpty()) {
+            android.widget.Toast.makeText(this, R.string.no_enabled_key, android.widget.Toast.LENGTH_SHORT).show();
+            return;
+        }
+        Log.d("UI_CLICK", "点击【批量铸造】按钮");
+        // 密码弹窗阶段不锁按钮：取消或输错都要保持可点，密码校验通过后才进入任务锁定
+        dialogHelper.showDecryptPasswordDialog(pwdCharArray -> {
+            beginTask(tbMint);
+            new Thread(() -> {
+                try {
+                    BatchMintTask.batchMintAllResume(getApplicationContext(), this, enabledList, pwdCharArray);
+                } catch (Exception e) {
+                    runOnUiThread(() -> appendLog("", "MINT", "错误：批量铸造外层异常：" + e.getMessage()));
+                    Log.e("BATCH_MINT", "异常", e);
+                } finally {
+                    Arrays.fill(pwdCharArray, (char) 0);
+                    runOnUiThread(this::endTask);
+                }
+            }).start();
+        });
     }
 
     /**
@@ -449,7 +481,7 @@ public class MainActivity extends BaseActivity implements TaskLogCallback, Batch
     }
 
     /**
-     * 完整工作流：充 fLGNS 门票 → 入场（按 {@link ArenaConfig#enterRounds} 圈）→ 领奖一次跑完。
+     * 完整工作流：充 fLGNS 门票 → 入场（按 {@link ArenaConfig#enterRounds} 圈）→ 领奖 → 铸造盟主令，一次跑完。
      *
      * <p>第 1 步的充值目标与圈数联动（{@link ArenaConfig#fundTargetFor(int)}）：补多少只看圈数，
      * 默认 1 圈时每号补到 100，12 圈时补到 500——冠军拿的是锁仓甲子、不会形成 claimable，
@@ -1186,6 +1218,8 @@ public class MainActivity extends BaseActivity implements TaskLogCallback, Batch
                 item.jiaziClaimable = old.jiaziClaimable;
                 item.arenaClaimable = old.arenaClaimable;
                 item.lineagePending = old.lineagePending;
+                item.mintableCount = old.mintableCount;
+                item.mintedCount = old.mintedCount;
                 item.pending = old.pending;
                 item.unknown = old.unknown;
             } else {
@@ -1572,13 +1606,18 @@ public class MainActivity extends BaseActivity implements TaskLogCallback, Batch
                     final List<String> slice = new ArrayList<>(addrs.subList(start, end));
                     final Map<String, BigInteger> claimMap = new java.util.HashMap<>();
                     final Map<String, BigInteger> lineageMap = new java.util.HashMap<>();
+                    final Map<String, ArenaContractApi.MintCounts> mintMap = new java.util.HashMap<>();
                     for (String addr : slice) {
                         BigInteger c = null, lpc = null;
+                        ArenaContractApi.MintCounts mint = null;
                         try { c = ArenaContractApi.callClaimable(web3j, addr); } catch (Exception ignore) {}
                         try { lpc = ArenaContractApi.callLineagePending(web3j, addr); } catch (Exception ignore) {}
+                        // 盟主令两口径：逐地址 jiaziPage 领讫笔数 − ChampionMandate.balanceOf 已铸 = 可铸，与领取后刷新口径一致
+                        try { mint = ArenaContractApi.callMintCounts(web3j, addr); } catch (Exception ignore) {}
                         if (c == null && lpc == null) claimMiss++;
                         claimMap.put(addr, c);
                         lineageMap.put(addr, lpc);
+                        mintMap.put(addr, mint);
                     }
                     doneClaim += slice.size();
                     final int fDoneClaim = doneClaim;
@@ -1589,9 +1628,12 @@ public class MainActivity extends BaseActivity implements TaskLogCallback, Batch
                             if (bucket == null) continue;
                             BigInteger c = claimMap.get(addr);
                             BigInteger lpc = lineageMap.get(addr);
+                            ArenaContractApi.MintCounts mint = mintMap.get(addr);
                             for (AccountStatsAdapter.AccountStatsItem it : bucket) {
                                 it.arenaClaimable = c;
                                 it.lineagePending = lpc;
+                                it.mintableCount = mint != null ? mint.mintable : null;
+                                it.mintedCount = mint != null ? mint.minted : null;
                             }
                         }
                         accountStatsAdapter.notifyStatsChanged();

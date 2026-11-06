@@ -239,6 +239,174 @@ public class ArenaContractApi {
         return decodeUint256At(hexValue, 0);
     }
 
+    /** jiaziPage(address,uint256,uint256) 的 4 字节选择器（现场 keccak，与部署字节码 dispatcher 一致） */
+    private static final String SEL_JIAZI_PAGE = "0x85adb0f7";
+
+    /** ChampionMandate.mint(uint256[]) 选择器（官网 ABI 清单，链上 eth_call 干跑 from=持有人不 revert） */
+    private static final String SEL_MANDATE_MINT = "0xf8e93ef9";
+    /** ChampionMandate.used(address,uint256) 选择器：某笔俸禄 index 是否已铸过盟主令 */
+    private static final String SEL_MANDATE_USED = "0xad04dc3f";
+
+    /**
+     * 手拼 jiaziPage 调用数据：selector + owner(32B) + from(32B) + count(32B)。
+     * 与 encodePlayerHistoryLatestData 同一套路：不走 FunctionEncoder，直接用字节码验证过的 selector。
+     */
+    private static String encodeJiaziPageData(String owner, long from, long count) {
+        String addr = Numeric.cleanHexPrefix(owner);
+        String fromHex = Numeric.toHexStringNoPrefixZeroPadded(BigInteger.valueOf(from), 64);
+        String countHex = Numeric.toHexStringNoPrefixZeroPadded(BigInteger.valueOf(count), 64);
+        return SEL_JIAZI_PAGE
+                + String.format("%64s", addr).replace(' ', '0')
+                + fromHex + countHex;
+    }
+
+    /**
+     * 盟主令两口径计数：{@code mintable}=可铸（可铸造）、{@code minted}=已铸（已铸造）。
+     * <p>整体查失败时返回 null；两个字段成对出现，不会一个有一个无。</p>
+     */
+    public static class MintCounts {
+        /** 可铸 = 领讫俸禄笔数 − 已铸（官网「可 Mint」） */
+        public Integer mintable;
+        /** 已铸 = ChampionMandate.balanceOf(地址)（官网「已 Mint」） */
+        public Integer minted;
+    }
+
+    /**
+     * 统计该地址盟主令两口径：<b>可铸</b> = 领讫俸禄笔数 − 已铸；<b>已铸</b> = {@code balanceOf}。
+     *
+     * <p>盟主令是独立的 ChampionMandate ERC721（{@link ArenaConfig#MANDATE_NFT_ADDR}，部署于
+     * Anubis 6714，非 arena 主合约）。官网两口径：<b>已铸</b>={@code ChampionMandate.balanceOf(owner)}
+     * （已铸造并持有的 NFT 数）；<b>可铸</b>=领讫俸禄笔数 − 已铸。领讫判据取 JiaziRow.claimedDays
+     * （行内第 5 个字，偏移 +256 hex）满 {@link ArenaConfig#JIAZI_DAYS}(60)：该笔已全部领讫、可铸一枚。
+     * 实测：0x66E4…领讫2/balanceOf1→可铸1/已铸1；0x2913…领讫5/balanceOf5→可铸0/已铸5；
+     * 0xfca0…领讫7/balanceOf7→可铸0/已铸7，与官网(可 Mint/已 Mint)完全一致。</p>
+     *
+     * <p>领讫笔数用 {@code jiaziPage} 分页统计（每页最多 {@link ArenaConfig#MAX_PAGE}，按 total 续页）；
+     * JiaziRow 是 6 个 uint256 定长结构（index,roundId,validDays,released,claimedDays,claimableAmount），
+     * 每行 384 hex，手工按字切片绕开 web3j decoder 的 LowLevel 崩溃。全程只读、不发链上交易。</p>
+     *
+     * @return 可铸/已铸两个枚数；领讫或 balanceOf 任一 RPC 失败返回 null（调用方按“未查到”隐藏，不伪造 0）
+     */
+    public static MintCounts callMintCounts(Web3j web3j, String owner) {
+        try {
+            int full = 0;
+            long from = 0;
+            long total = -1;
+            while (total < 0 || from < total) {
+                EthCall res = web3j.ethCall(
+                        Transaction.createEthCallTransaction(null, ARENA_ADDR,
+                                encodeJiaziPageData(owner, from, ArenaConfig.MAX_PAGE)),
+                        DefaultBlockParameterName.LATEST).send();
+                if (res.hasError()) return null;
+                String hex = Numeric.cleanHexPrefix(res.getValue());
+                // 头部 (JiaziRow[],uint256)：word0=数组字节偏移(0x40)，word1=俸禄总条数 total
+                if (hex.length() < 128) break;
+                long arrOffBytes = decodeUint256At(hex, 0).longValue();
+                total = decodeUint256At(hex, 1).longValue();
+                long lenStart = arrOffBytes * 2;
+                if (hex.length() < lenStart + 64) break;
+                long len = new BigInteger(hex.substring((int) lenStart, (int) (lenStart + 64)), 16).longValue();
+                long rowsStart = lenStart + 64;
+                for (long i = 0; i < len; i++) {
+                    long base = rowsStart + i * 384;
+                    // claimedDays 是行内第 5 个字，需读到 base+320 hex
+                    if (base + 320 > hex.length()) break;
+                    long claimed = new BigInteger(hex.substring((int) (base + 256), (int) (base + 320)), 16).longValue();
+                    if (claimed >= ArenaConfig.JIAZI_DAYS) full++;
+                }
+                if (len == 0) break;
+                from += ArenaConfig.MAX_PAGE;
+            }
+            // 已铸 = ChampionMandate.balanceOf；可铸 = 领讫笔数 − 已铸；balanceOf 失败随外层 catch 返回 null
+            int minted = callMandateBalanceOf(web3j, owner);
+            MintCounts mc = new MintCounts();
+            mc.minted = minted;
+            mc.mintable = Math.max(0, full - minted);
+            return mc;
+        } catch (Exception e) {
+            Log.d("RPC_DEBUG", "callMintCounts[" + owner + "] 失败：" + e.getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * 查询该地址已铸造并持有的盟主令（ChampionMandate ERC721）数量 = 官网「已铸 / 已 Mint」。
+     *
+     * <p>balanceOf(address) 选择器 {@code 0x70a08231}（标准 ERC721，实测三地址 7/1/5 与官网一致）；
+     * 打的是独立 NFT 合约 {@link ArenaConfig#MANDATE_NFT_ADDR}，非 arena 主合约。</p>
+     *
+     * @return 持有枚数；RPC 失败抛异常，由 {@link #callMintCounts} 归为 null
+     */
+    public static int callMandateBalanceOf(Web3j web3j, String owner) throws Exception {
+        String addr = Numeric.cleanHexPrefix(owner);
+        String callData = "0x70a08231" + String.format("%64s", addr).replace(' ', '0');
+        EthCall res = web3j.ethCall(
+                Transaction.createEthCallTransaction(null, ArenaConfig.MANDATE_NFT_ADDR, callData),
+                DefaultBlockParameterName.LATEST).send();
+        if (res.hasError()) throw new Exception("balanceOf error:" + res.getError().getMessage());
+        return decodeUint256At(res.getValue(), 0).intValue();
+    }
+
+    /**
+     * 查询该地址「可铸」的俸禄 index 列表：JiaziRow.claimedDays≥60 且 {@code used(地址,index)=false} 的那些。
+     *
+     * <p>{@link #callMintCounts} 的「可铸枚数」在这里变成精确的 index 清单——{@link #doMandateMint}
+     * 的交易入参就是它们。index 是行内第 1 个字（base..+64）；已铸判断用 ChampionMandate 的
+     * {@code used(address,uint256)}（selector {@code 0xad04dc3f}，取自官网 ABI 清单，实测
+     * 0x66E4 两笔领讫行返回 1/0，与官网已铸1/可铸1 一致），逐个 eth_call 排除。</p>
+     *
+     * @return 可铸 index 列表（可能为空）；任一 RPC 失败返回 null（调用方不能当空列表发交易）
+     */
+    public static List<BigInteger> callMintableIndices(Web3j web3j, String owner) {
+        try {
+            List<BigInteger> fullIdx = new ArrayList<>();
+            long from = 0;
+            long total = -1;
+            while (total < 0 || from < total) {
+                EthCall res = web3j.ethCall(
+                        Transaction.createEthCallTransaction(null, ARENA_ADDR,
+                                encodeJiaziPageData(owner, from, ArenaConfig.MAX_PAGE)),
+                        DefaultBlockParameterName.LATEST).send();
+                if (res.hasError()) return null;
+                String hex = Numeric.cleanHexPrefix(res.getValue());
+                if (hex.length() < 128) break;
+                long arrOffBytes = decodeUint256At(hex, 0).longValue();
+                total = decodeUint256At(hex, 1).longValue();
+                long lenStart = arrOffBytes * 2;
+                if (hex.length() < lenStart + 64) break;
+                long len = new BigInteger(hex.substring((int) lenStart, (int) (lenStart + 64)), 16).longValue();
+                long rowsStart = lenStart + 64;
+                for (long i = 0; i < len; i++) {
+                    long base = rowsStart + i * 384;
+                    // 领讫判据与 callMintCounts 一致：claimedDays 行内第 5 个字满 60
+                    if (base + 320 > hex.length()) break;
+                    long claimed = new BigInteger(hex.substring((int) (base + 256), (int) (base + 320)), 16).longValue();
+                    if (claimed >= ArenaConfig.JIAZI_DAYS) {
+                        fullIdx.add(new BigInteger(hex.substring((int) base, (int) (base + 64)), 16));
+                    }
+                }
+                if (len == 0) break;
+                from += ArenaConfig.MAX_PAGE;
+            }
+            // 逐笔排除已铸：used(地址,index) 为 true 即该笔俸禄已换过 NFT
+            List<BigInteger> out = new ArrayList<>();
+            String addrPad = String.format("%64s", Numeric.cleanHexPrefix(owner)).replace(' ', '0');
+            for (BigInteger idx : fullIdx) {
+                String callData = SEL_MANDATE_USED + addrPad
+                        + Numeric.toHexStringNoPrefixZeroPadded(idx, 64);
+                EthCall res = web3j.ethCall(
+                        Transaction.createEthCallTransaction(null, ArenaConfig.MANDATE_NFT_ADDR, callData),
+                        DefaultBlockParameterName.LATEST).send();
+                if (res.hasError()) return null;
+                if (decodeUint256At(res.getValue(), 0).signum() == 0) out.add(idx);
+            }
+            return out;
+        } catch (Exception e) {
+            Log.d("RPC_DEBUG", "callMintableIndices[" + owner + "] 失败：" + e.getMessage());
+            return null;
+        }
+    }
+
     /**
      * 查询待领擂台奖金（{@code claimable} 公开 mapping 的 getter），单位 wei。
      *
@@ -728,6 +896,34 @@ public class ArenaContractApi {
     /** 领取奖励的便捷重载（不需要崩溃恢复） */
     public static void doClaimRewards(Web3j web3j, ECKeyPair ecKeyPair, BigInteger nonce, BigInteger gasPrice) throws Exception {
         doClaimRewards(web3j, ecKeyPair, nonce, gasPrice, null);
+    }
+
+    /**
+     * 铸造盟主令（ChampionMandate {@code mint(uint256[])}，打独立 NFT 合约而非 arena 主合约）。
+     *
+     * <p>入参是 {@link #callMintableIndices} 查回的可铸俸禄 index；单批上限
+     * {@link ArenaConfig#MANDATE_MINT_BATCH}=24（对齐官网前端，合约硬上限 64，64 枚一笔
+     * 约 12.25M gas 会超区块/超估算被拒）。calldata 手拼动态数组 ABI：
+     * selector + offset(0x20) + length + 各元素，与类内其它手拼写法同一套路。</p>
+     *
+     * @throws Exception index 超限/空列表，或交易 revert/超时（见 {@link RevertedTxException}）
+     */
+    public static TransactionReceipt doMandateMint(Web3j web3j, ECKeyPair ecKeyPair,
+                                                   List<BigInteger> indices, BigInteger nonce,
+                                                   BigInteger gasPrice, PreBroadcastHook hook) throws Exception {
+        if (indices == null || indices.isEmpty()) throw new Exception("mint: 无可铸 index");
+        if (indices.size() > ArenaConfig.MANDATE_MINT_BATCH) {
+            throw new Exception("mint: 单笔最多 " + ArenaConfig.MANDATE_MINT_BATCH + " 枚，当前 " + indices.size());
+        }
+        StringBuilder args = new StringBuilder(
+                "0000000000000000000000000000000000000000000000000000000000000020");
+        args.append(Numeric.toHexStringNoPrefixZeroPadded(BigInteger.valueOf(indices.size()), 64));
+        for (BigInteger idx : indices) {
+            args.append(Numeric.toHexStringNoPrefixZeroPadded(idx, 64));
+        }
+        String data = SEL_MANDATE_MINT + args;
+        return sendRawTxAndWaitReceipt(web3j, ecKeyPair, nonce, gasPrice,
+                ArenaConfig.GAS_LIMIT_MANDATE_MINT, ArenaConfig.MANDATE_NFT_ADDR, data, hook);
     }
 
     // endregion

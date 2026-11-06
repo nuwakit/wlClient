@@ -235,33 +235,6 @@
         android:elevation="2dp">
 
         <LinearLayout
-            android:id="@+id/btn_batch_fund"
-            android:layout_width="0dp"
-            android:layout_height="40dp"
-            android:layout_weight="1"
-            android:orientation="horizontal"
-            android:gravity="center"
-            android:background="@drawable/bg_btn_rounded"
-            android:backgroundTint="#E65100"
-            android:clickable="true"
-            android:focusable="true">
-            <ImageView
-                android:layout_width="16dp"
-                android:layout_height="16dp"
-                android:src="@drawable/ic_fund_svg"
-                android:layout_marginEnd="4dp" />
-            <TextView
-                android:id="@+id/tv_btn_fund_label"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/title_batch_fund"
-                android:textColor="#ffffff"
-                android:textSize="13sp" />
-        </LinearLayout>
-
-        <View android:layout_width="4dp" android:layout_height="0dp" />
-
-        <LinearLayout
             android:id="@+id/btn_batch_enter"
             android:layout_width="0dp"
             android:layout_height="40dp"
@@ -311,6 +284,36 @@
                 android:text="@string/common_btn_batch_claim"
                 android:textColor="#ffffff"
                 android:textSize="13sp" />
+        </LinearLayout>
+
+        <View android:layout_width="4dp" android:layout_height="0dp" />
+
+        <!-- 批量铸造（盟主令）：武林盟主风格——绛红鎏金渐变底 + 盟主令牌图标 + 鎏金文字。
+             不设 backgroundTint：MainActivity 记录的原始 tint 为 null，置灰靠 alpha、
+             恢复靠 setBackgroundTintList(null)（渐变自现），停止键纯色 tint 会盖住渐变仍可视 -->
+        <LinearLayout
+            android:id="@+id/btn_batch_mint"
+            android:layout_width="0dp"
+            android:layout_height="40dp"
+            android:layout_weight="1"
+            android:orientation="horizontal"
+            android:gravity="center"
+            android:background="@drawable/bg_btn_batch_mint"
+            android:clickable="true"
+            android:focusable="true">
+            <ImageView
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:src="@drawable/ic_mandate_token_svg"
+                android:layout_marginEnd="4dp" />
+            <TextView
+                android:id="@+id/tv_btn_mint_label"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/common_btn_batch_mint"
+                android:textColor="#FFE082"
+                android:textSize="13sp"
+                android:textStyle="bold" />
         </LinearLayout>
 
         <View android:layout_width="4dp" android:layout_height="0dp" />

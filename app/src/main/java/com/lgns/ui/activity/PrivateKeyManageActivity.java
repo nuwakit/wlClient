@@ -481,6 +481,19 @@ public class PrivateKeyManageActivity extends BaseActivity {
             new Thread(() -> {
                 try {
                     KeyStoreManager mgr = AppGlobal.getMetaManager();
+                    // 加密密码对标第一条私钥：GCM 没有独立校验位，拿列表第一条密文试解，
+                    // 解得开才算同一份密码。不拦的话会出现「多条记录密码不一致」，
+                    // 批量任务用会话密码只能解开一部分号，剩下的每到解密环节静默失败。
+                    // 首条密文缺失属脏数据（旧版迁移遗留），无对象可对标时直接放行
+                    List<KeyStoreManager.KeyEntry> existing = mgr.loadKeyEntryList();
+                    if (!existing.isEmpty() && existing.get(0).cipherText != null
+                            && !existing.get(0).cipherText.isEmpty()) {
+                        try {
+                            mgr.testDecrypt(existing.get(0).cipherText, pwd);
+                        } catch (Exception ex) {
+                            throw new Exception(getString(R.string.err_pwd_not_match_first_key));
+                        }
+                    }
                     mgr.addPrivateKey(fullKey, pwd, customCode, group);
                     java.util.Arrays.fill(pwd, (char) 0);
                     chainDirty = true;   // 新增 key 引入未查地址，回主界面需重拉链上

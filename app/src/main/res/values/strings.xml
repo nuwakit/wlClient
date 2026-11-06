@@ -148,7 +148,8 @@
     <string name="hint_pk_part1">私钥 前半段</string>
     <string name="hint_pk_part2">私钥 后半段</string>
     <string name="label_crypto_key">加解密密码</string>
-    <string name="hint_crypto_key">输入加解密Key,建议7位字母+数字组合及以上</string>
+    <string name="hint_crypto_key">输入加解密Key,建议7位字母+数字组合及以上；已有私钥时须与现有密码一致</string>
+    <string name="err_pwd_not_match_first_key">加密密码与已有私钥不一致：新私钥必须使用第一条私钥的密码，否则批量任务只能解开一部分账号。若需换密码请用改密功能整体更换</string>
     <string name="toast_key_added">✅ 添加成功</string>
 
     <!-- ══════════ 编辑私钥对话框 ══════════ -->
@@ -245,6 +246,7 @@
     <string name="common_cd_expand_toggle">展开/折叠</string>
     <string name="common_btn_batch_enter">批量入场</string>
     <string name="common_btn_batch_claim">批量领取</string>
+    <string name="common_btn_batch_mint">批量铸造</string>
     <string name="common_btn_full_workflow">完整流程</string>
     <!-- 运行中把「正在跑的那个按钮」换成停止键：点一下 = 打完当前这一圈再停，不会留下半轮锁仓 -->
     <string name="common_btn_stop_after_round">停止</string>
@@ -332,15 +334,17 @@
     <string name="account_tag_jiazi_fmt">甲子 %1$s</string>
     <string name="account_tag_arena_fmt">擂台 %1$s</string>
     <string name="account_tag_lineage_fmt">师徒 %1$s</string>
+    <string name="account_tag_mint_fmt">盟主令 可铸%1$d/已铸%2$d</string>
     <!-- 行尾 › 的无障碍描述：读屏时代替纯图标，说明点击去向 -->
     <string name="account_row_open_detail">查看该账号详情</string>
 
     <!-- ══════════ 账号详情页（点主界面某行进入，展示入场/领取明细并就地操作） ══════════ -->
     <string name="common_title_account_detail">账号详情</string>
     <string name="detail_section_enter">🎯 入场详情</string>
-    <string name="detail_section_claim">💰 领取详情</string>
+    <string name="detail_section_claim">💰 领铸详情</string>
     <string name="detail_btn_enter">入场</string>
     <string name="detail_btn_claim">领取</string>
+    <string name="detail_btn_mint">铸造</string>
     <string name="detail_refresh">刷新</string>
     <!-- 明细行标签：右侧数值在代码里回填，标签固定不变 -->
     <string name="detail_label_wallet_balance">钱包余额 (fLGNS)</string>
@@ -355,6 +359,8 @@
     <string name="detail_label_jiazi_claimable">甲子可提 (fLGNS)</string>
     <string name="detail_label_jiazi_released">甲子已释放 (fLGNS)</string>
     <string name="detail_label_jiazi_granted">甲子累计发放 (fLGNS)</string>
+    <string name="detail_label_mintable_count">盟主令 (可铸/已铸)</string>
+    <string name="detail_mintable_value_fmt">可铸 %1$d / 已铸 %2$d</string>
     <string name="detail_label_arena_claimable">擂台可领 (fLGNS)</string>
     <string name="detail_label_lineage_pending">师徒可领 (fLGNS)</string>
     <string name="detail_label_prize">可抵门票奖金 (fLGNS)</string>
@@ -377,6 +383,7 @@
     <!-- 版本：详情页按钮点击不弹 Toast，改为写日志并落库 -->
     <string name="detail_log_click_enter">点击【入场】，准备单号入场</string>
     <string name="detail_log_click_claim">点击【领取】，准备单号领取</string>
+    <string name="detail_log_click_mint">点击【铸造】，准备铸造盟主令</string>
     <string name="detail_log_click_refresh">点击【刷新】，重新拉取链上明细</string>
     <string name="detail_key_missing">未在本机找到该地址对应的私钥，无法执行操作</string>
     <!-- 跨页任务闸门与密码弹窗取消：按钮操作改走日志，不弹 Toast -->

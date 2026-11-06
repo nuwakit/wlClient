@@ -36,6 +36,12 @@ public class ArenaConfig {
 
     /** 擂台合约地址（FunLonginusArena）：入场、领取、统计查询都打这个地址 */
     public static final String ARENA_ADDR = "0xff060bAB41e16eBF0eFE4FAd454404Fd5f75aAaA";
+    /**
+     * 盟主令（Champion Mandate）独立 ERC721 NFT 合约地址，部署于 Anubis(6714)。
+     * 与 arena 主合约分开；balanceOf(地址) 即官网「已铸 / 已 Mint」。
+     * 地址取自官网前端 mandate 配置（funverse.gg/mandate/config.*.js），ARENA 回读与 EXPECTED_ARENA 一致。
+     */
+    public static final String MANDATE_NFT_ADDR = "0xfffe850fd170625a8f816a731b9b278cc161aaaa";
 
     /**
      * Gas 币：本链的手续费是一枚 ERC20（Dai Stablecoin）。
@@ -78,53 +84,10 @@ public class ArenaConfig {
             "0x86f990B428e4f1aaCf3cD0272941b52a74d36c8E",
             "0x9096eef52293291fff2c3a99dbb9b9d08fb015b0",
             "0x1bac261b1684bc33010bd204a49d0f1303cfd2b3",
+            "0xfca0a08BF141A254F684E5Ca82BAeF7Ffe915d34",
+            "0x66E4B4747279C34F148474a71E110578493686C6",
+            "0x2913483c90C01330a37fe6FDC35777B5332c5B7B",
             "0xe5e46ee6084ce94f1c655393c0990acd19512a84",
-            "0x6384ab0fb1aaec73b9e8ee7c449f54ed60a16fd8",
-            "0xb156d09afcf4cdfda241b22898a3f6ce36d039a0",
-            "0xeeca6bed118388488616f53199632e80c83a26ad",
-            "0xb3d11a44b22d3491b92b107562427b029802cb30",
-            "0x973dfb4d2bac9c906b003708bebb5cc437125893",
-            "0x7d12b0af457b214571849ee0df8f54b458943b98",
-            "0x908dc35b5f9fe6e2c1fef212bc3758810381830e",
-            "0x6460f8775f80532fd96bec99e343475db598e92c",
-            "0x29cf7cb0b78eb69890cb79f2d504449496127155",
-            "0x1b630a3c758d74f475825f60f7201421abe2743b",
-            "0x01c4c6f647b75f708a23401434aeec8eb901f846",
-            "0xb3799328b8498c714640a29f9c7bc1d7b136c1a8",
-            "0x32d531baafb640d1f2644d8e72c1f7b0e91c908e",
-            "0xe22cdf579e04e9e6105a925bb25e2367c3574bb3",
-            "0xc17c2f29d7da4a71e30dfc7e06073deff05071e5",
-            "0xc276146b2c80320b129662f1c9a76f205f9f6da4",
-            "0x64d40256895b57ecfac4606e627b754d05e0d957",
-            "0x528e32993ff59dc0f3f94ba6c9b052af351908f4",
-            "0x6f561586b2c702f42780bbdd95da9fcea394f431",
-            "0x52c0e47ba7ff90468922a5b4d7b27eabfd09dd4d",
-            "0x807694c111fe180f57aeb8f9846c7eaa1a3b16d0",
-            "0x6f4891da13809a26eae17d396a8ace42dedee45f",
-            "0xb95b7b1563af77d020a4673f2c79a8ea0b6b90d6",
-            "0x82549e93b3fbf19f1fd8501d3b3578b8fb0cba1e",
-            "0x5ff41e7076e2a74ed3d44f51683e41ead4f54eb1",
-            "0x7c648f4dc4adadb6a3a25ae17f60f44e43c52b08",
-            "0xd83e263f481b99aa3ea6e7245db265de073a3ea5",
-            "0x7a029ac20eb7a7bc3cb8e53da13ea1f68bc84519",
-            "0xaa83528543d756529265710a9b22be110a63455c",
-            "0xa9ca0d8550b528c0440b6c9e04f535e60038d71d",
-            "0x3bb5c3f8ad45b4ce25920cd5c98db4b21a2bb903",
-            "0xc119ed474f67ba02c03e1d0f39181061b81f944a",
-            "0xe59b633818ec64ce110534cf022beac0ba014eac",
-            "0x2748a75b7415ea38e3faa36c5066971b7a39fcaf",
-            "0x1e4957ae382c8ad66730ce9cff00b4a2b7af0744",
-            "0xfb16600d4cf61eb246761fb83786792d425615ae",
-            "0x5ca80b1604078ef3893cbd7c061f4a447aad18da",
-            "0x4929297b7bfd55e78af09f3828940fb190b3f931",
-            "0x95c5bbf340d830d463b845b0d5113e486dacebd4",
-            "0x5abe0dfb02a2108ddcbb6e7bcc9cb8d7144fb7f7",
-            "0xf17cf1dd55c10d01384d8dc29aa726e1a4c86dbd",
-            "0x18c7f80a002945f3212af1a2ab6c7db898db49eb",
-            "0x19301acbe4991715738ae45dc646fd3557d32f75",
-            "0x74ab349d130c3a27bcab3b6300dd33173b8a392b",
-            "0x7f8c7c2dc5302b77fffd8128d6559950fde3d5c4",
-            "0x366956c52a350dbaa0bc322559fd0d5d3180a9e9",
             "0xAF5c405Ec74B45D06960A621CF58C0A7ce09eeB1"
     };
 
@@ -203,6 +166,21 @@ public class ArenaConfig {
 
     /** 甲子俸单页领取上限 64（合约 MAX_JIAZI_BATCH）：服务端限制每次调用最多释放 64 条记录 */
     public static final BigInteger MAX_JIAZI_BATCH = BigInteger.valueOf(64);
+    /**
+     * 甲子俸全额释放所需天数（合约 JIAZI_DAYS=60）：某笔俸禄的 {@code claimedDays} 达到此值，
+     * 即视为该笔已全部领讫，可铸一枚盟主令（ChampionMandate NFT）。官网拆两口径：
+     * <b>已铸</b>={@code ChampionMandate.balanceOf(地址)}（已铸造并持有的 NFT 数），
+     * <b>可铸</b>=领讫笔数(claimedDays≥60)−已铸。胶囊同时展示可铸/已铸两口径，见 {@code ArenaContractApi.callMintCounts}。
+     */
+    public static final int JIAZI_DAYS = 60;
+    /** 甲子俸分页单页上限（合约 MAX_PAGE=100）：jiaziPage 的 count 超过它会 revert BatchTooLarge */
+    public static final int MAX_PAGE = 100;
+    /**
+     * 盟主令单笔铸造上限（对齐官网前端 MINT_BATCH=24）：合约硬上限 64，但 64 枚一笔实测约
+     * 12.25M gas，接近区块上限且远超钱包常规估算，会被直接拒；24 枚约 4.6M，安全。
+     * 还有剩余时再点一次（见 {@code ArenaContractApi.doMandateMint}）。
+     */
+    public static final int MANDATE_MINT_BATCH = 24;
     /** 日切偏移 8 小时：合约按 UTC+8 算「今天」，本地算今日场次时必须加上这个偏移 */
     public static final long DAY_OFFSET = 8 * 3600L;
 
@@ -304,6 +282,11 @@ public class ArenaConfig {
     public static final BigInteger GAS_LIMIT_CLAIM_LINEAGE = BigInteger.valueOf(300000);
     /** 领取擂台奖金：单笔转账型操作，200k 足够 */
     public static final BigInteger GAS_LIMIT_CLAIM_REWARDS = BigInteger.valueOf(200000);
+    /**
+     * 铸造盟主令（ChampionMandate.mint(uint256[])）的 gas 上限：按单批 24 枚折算
+     * （64 枚≈ 12.25M → 24 枚≈ 4.6M）再留余量取 5M；gasLimit 只是上限，实际按 gasUsed 扣费。
+     */
+    public static final BigInteger GAS_LIMIT_MANDATE_MINT = BigInteger.valueOf(5_000_000);
     /** 普通 ERC20 transfer（批量转账收款方入账等场景） */
     public static final BigInteger GAS_LIMIT_ERC20_TRANSFER = BigInteger.valueOf(100000);
     /** 补 Gas 走 GAS_TOKEN 的 transfer：实测 gasUsed ≈ 34,768，留一倍余量防 OOG */

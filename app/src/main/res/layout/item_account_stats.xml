@@ -189,7 +189,7 @@
                 </LinearLayout>
             </LinearLayout>
 
-            <!-- 待领小标签行：甲子/擂台/师徒三类可领额度各一个胶囊，与批量领取口径一致。
+            <!-- 待领小标签行：甲子/擂台/师徒三类可领额度，外加「可铸盟主令」枚数，各一个胶囊，与批量领取口径一致。
                  绿=有待领、灰=此刻为 0，一眼看出这个号能不能领；具体数值与显隐在适配器里回填 -->
             <LinearLayout
                 android:layout_width="match_parent"
@@ -229,6 +229,21 @@
 
                 <TextView
                     android:id="@+id/tv_tag_lineage"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="6dp"
+                    android:background="@drawable/bg_tag_gray"
+                    android:paddingStart="6dp"
+                    android:paddingEnd="6dp"
+                    android:paddingTop="2dp"
+                    android:paddingBottom="2dp"
+                    android:textSize="10sp"
+                    android:textStyle="bold"
+                    android:textColor="#FFFFFF"
+                    android:visibility="gone"/>
+
+                <TextView
+                    android:id="@+id/tv_tag_mint"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:background="@drawable/bg_tag_gray"

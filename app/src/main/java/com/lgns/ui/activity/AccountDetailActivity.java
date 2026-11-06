@@ -25,7 +25,10 @@ import com.lgns.model.KeyListItem;
 import com.lgns.task.TaskLogCallback;
 import com.lgns.util.Web3AndroidUtil;
 
+import org.web3j.crypto.ECKeyPair;
 import org.web3j.protocol.Web3j;
+import org.web3j.protocol.core.DefaultBlockParameterName;
+import org.web3j.protocol.core.methods.response.TransactionReceipt;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -38,7 +41,7 @@ import java.util.List;
 import java.util.Locale;
 
 /**
- * 账号详情页：从主界面点某行进入，展示该地址的入场/领取两类链上明细，并可就地做单号「入场」「领取」。
+ * 账号详情页：从主界面点某行进入，展示该地址的入场/领取两类链上明细，并可就地做单号「入场」「领取」「铸造盟主令」。
  *
  * <p>取数与主界面同源（playerSummary + claimable + lineagePending），只是单地址、逐字段展开；
  * 操作直接复用批量任务（传单元素列表），日志与主界面一致——先上屏本页，再在子线程 {@code insertLog} 落库。</p>
@@ -70,7 +73,7 @@ public class AccountDetailActivity extends BaseActivity implements TaskLogCallba
 
     private TextView tvName, tvGroup, tvAddr;
     private ProgressBar pbLoading;
-    private View btnEnter, btnClaim, btnRefresh;
+    private View btnEnter, btnClaim, btnMint, btnRefresh;
     private TextView tvLog, tvLogToggle;
     private View logHeader;
     private ScrollView scrollLog;
@@ -80,7 +83,7 @@ public class AccountDetailActivity extends BaseActivity implements TaskLogCallba
             valSeated, valInMatchDeposit, valNextFeeSource;
     // 领取明细行的数值控件
     private TextView valBattles, valChampionships, valJiaziClaimable, valJiaziReleased,
-            valJiaziGranted, valArenaClaimable, valLineagePending, valPrize;
+            valJiaziGranted, valArenaClaimable, valLineagePending, valPrize, valMintableCount;
 
     /** 本页单号任务运行标记：跑任务时禁用三个按钮，避免重复提交抢同一 nonce */
     private volatile boolean taskRunning = false;
@@ -108,6 +111,7 @@ public class AccountDetailActivity extends BaseActivity implements TaskLogCallba
         pbLoading = findViewById(R.id.pb_detail_loading);
         btnEnter = findViewById(R.id.btn_d_enter);
         btnClaim = findViewById(R.id.btn_d_claim);
+        btnMint = findViewById(R.id.btn_d_mint);
         btnRefresh = findViewById(R.id.btn_d_refresh);
         tvLog = findViewById(R.id.tv_detail_log);
         scrollLog = findViewById(R.id.scroll_detail_log);
@@ -135,6 +139,7 @@ public class AccountDetailActivity extends BaseActivity implements TaskLogCallba
         btnRefresh.setOnClickListener(v -> handleRefreshClick());
         btnEnter.setOnClickListener(v -> handleEnterClick());
         btnClaim.setOnClickListener(v -> handleClaimClick());
+        btnMint.setOnClickListener(v -> handleMintClick());
 
         // 日志折叠：点标题行切换，交互与主界面 layout_log_header 一致；默认收起由布局 visibility=gone 决定
         logHeader.setOnClickListener(v -> {
@@ -196,6 +201,10 @@ public class AccountDetailActivity extends BaseActivity implements TaskLogCallba
         valArenaClaimable = addKpi(claimKpi, R.string.detail_label_arena_claimable, flgns, claimGreen, 20f);
         valLineagePending = addKpi(claimKpi, R.string.detail_label_lineage_pending, flgns, claimGreen, 20f);
 
+        // 盟主令两口径（可铸/已铸）紧跟三项可领胶囊：铸造与领取同属俸禄链路，挂在底部
+        // 甲子分组里会被当成普通统计行，用户找不到入口；dividerAbove 顺带承担原 KPI 下分隔线
+        valMintableCount = addRow(claim, R.string.detail_label_mintable_count, true);
+
         addDivider(claim);
 
         addGroupLabel(claim, R.string.detail_group_stats);
@@ -211,7 +220,7 @@ public class AccountDetailActivity extends BaseActivity implements TaskLogCallba
         TextView[] all = {valBalance, valAllowance, valEntriesToday, valEntriesRemaining,
                 valSeated, valInMatchDeposit, valNextFeeSource, valBattles, valChampionships,
                 valJiaziClaimable, valJiaziReleased, valJiaziGranted, valArenaClaimable,
-                valLineagePending, valPrize};
+                valLineagePending, valPrize, valMintableCount};
         for (TextView tv : all) tv.setText(R.string.common_placeholder);
     }
 
@@ -395,16 +404,19 @@ public class AccountDetailActivity extends BaseActivity implements TaskLogCallba
                 final ArenaContractApi.PlayerSummary s =
                         ArenaContractApi.callPlayerSummary(web3j, address);
                 BigInteger c = null, lpc = null;
+                ArenaContractApi.MintCounts mint = null;
                 try { c = ArenaContractApi.callClaimable(web3j, address); } catch (Exception ignore) {}
                 try { lpc = ArenaContractApi.callLineagePending(web3j, address); } catch (Exception ignore) {}
+                try { mint = ArenaContractApi.callMintCounts(web3j, address); } catch (Exception ignore) {}
                 final BigInteger claimable = c;
                 final BigInteger lineage = lpc;
+                final ArenaContractApi.MintCounts mintCounts = mint;
                 runOnUiThread(() -> {
                     if (seq != loadSeq.get()) return;
                     loading = false;
                     if (destroyed) return;
                     pbLoading.setVisibility(View.GONE);
-                    fillDetails(s, claimable, lineage);
+                    fillDetails(s, claimable, lineage, mintCounts);
                 });
             } catch (Exception e) {
                 Log.e("AccountDetail", "load chain error", e);
@@ -424,8 +436,8 @@ public class AccountDetailActivity extends BaseActivity implements TaskLogCallba
         }).start();
     }
 
-    /** 把 playerSummary + claimable + lineagePending 展开到各行；未查到的额度显示占位 */
-    private void fillDetails(ArenaContractApi.PlayerSummary s, BigInteger claimable, BigInteger lineage) {
+    /** 把 playerSummary + claimable + lineagePending + 盟主令两口径(可铸/已铸)展开到各行；未查到的额度显示占位 */
+    private void fillDetails(ArenaContractApi.PlayerSummary s, BigInteger claimable, BigInteger lineage, ArenaContractApi.MintCounts mintCounts) {
         int entriesToday = s.entriesToday != null ? s.entriesToday.intValue() : 0;
         int remaining = s.entriesRemainingToday != null ? s.entriesRemainingToday.intValue() : 0;
 
@@ -453,7 +465,19 @@ public class AccountDetailActivity extends BaseActivity implements TaskLogCallba
         setClaimKpi(valLineagePending, lineage);
         valJiaziReleased.setText(formatToken(s.jiaziReleased));
         valJiaziGranted.setText(formatToken(s.jiaziTotalGranted));
+        setMintableCount(valMintableCount, mintCounts);
         valPrize.setText(formatToken(s.prize));
+    }
+
+    /** 盟主令两口径（可铸/已铸）：null→占位；否则「可铸 X / 已铸 Y」，可铸&gt;0 领取绿、为0 次要灰，与可领金额同色系 */
+    private void setMintableCount(TextView tv, ArenaContractApi.MintCounts mc) {
+        if (mc == null || mc.mintable == null) {
+            tv.setText(R.string.common_placeholder);
+            tv.setTextColor(getColor(R.color.text_secondary));
+            return;
+        }
+        tv.setText(getString(R.string.detail_mintable_value_fmt, mc.mintable, mc.minted == null ? 0 : mc.minted));
+        tv.setTextColor(getColor(mc.mintable > 0 ? R.color.claim_green : R.color.text_secondary));
     }
 
     /**
@@ -508,6 +532,21 @@ public class AccountDetailActivity extends BaseActivity implements TaskLogCallba
         setRunning(true);
         CryptoKeyPrompt.show(this, pwd -> startSingleTask(false, keyItem, pwd),
                 () -> releaseGlobalTask("CLAIM"));
+    }
+
+    /** 铸造盟主令：与入场/领取同一套三层门（本页门 → 全局闸门 → 密码门），通过后走单号铸造任务 */
+    private void handleMintClick() {
+        if (!guardOperable("MINT")) return;
+        logOp("MINT", getString(R.string.detail_log_click_mint));
+        final KeyListItem keyItem = resolveKeyItemByAddress();
+        if (keyItem == null) {
+            logOp("MINT", getString(R.string.detail_key_missing));
+            return;
+        }
+        if (!acquireGlobalTask("MINT")) return;
+        setRunning(true);
+        CryptoKeyPrompt.show(this, pwd -> startMintTask(keyItem, pwd),
+                () -> releaseGlobalTask("MINT"));
     }
 
     /**
@@ -580,6 +619,61 @@ public class AccountDetailActivity extends BaseActivity implements TaskLogCallba
                         getString(R.string.toast_op_failed_fmt, Web3AndroidUtil.safeMessage(e)));
             } finally {
                 Arrays.fill(pwd, (char) 0);
+                AppGlobal.releaseTask();
+                if (destroyed) return;
+                runOnUiThread(() -> {
+                    setRunning(false);
+                    loadData();
+                });
+            }
+        }).start();
+    }
+
+    /**
+     * 单号铸造盟主令：解密私钥 → 查可铸 index → 最多 {@link ArenaConfig#MANDATE_MINT_BATCH} 枚发一笔 mint 交易。
+     *
+     * <p>铸造不是领取的自动后续（官网也是独立按钮）：只有领讫满 60 天且 used() 未标已铸的俸禄
+     * 才能换 NFT，所以先查 {@code callMintableIndices} 再决定发不发：查失败/无可铸都不发交易，
+     * 不伪造成功。revert 不重试（同参数重发必再 revert，只白烧 gas），超时也不补发，
+     * 交给用户刷新后重查——回读 balanceOf 自然反映真实持仓。收尾顺序与 {@link #startSingleTask} 一致：
+     * 清密码 → 关连接 → 放闸门 → 判存活 → 刷 UI。</p>
+     */
+    private void startMintTask(final KeyListItem keyItem, final char[] pwd) {
+        new Thread(() -> {
+            Web3j web3j = null;
+            final String keyNo = displayNo(keyItem);
+            try {
+                web3j = Web3AndroidUtil.dialAny();
+                String plainPk = AppGlobal.getKeyStoreManager().decryptCipherText(keyItem.cipherText, pwd);
+                ECKeyPair keyPair = Web3AndroidUtil.pkToKeyPair(plainPk);
+                plainPk = null;
+                List<BigInteger> indices = ArenaContractApi.callMintableIndices(web3j, address);
+                if (indices == null) {
+                    onLog(keyNo, "MINT", "❌ 可铸俸禄查询失败，未发交易，请稍后重试");
+                    return;
+                }
+                if (indices.isEmpty()) {
+                    onLog(keyNo, "MINT", "ℹ 无可铸盟主令（领讫俸禄已全部铸造），未发交易");
+                    return;
+                }
+                int batch = Math.min(indices.size(), ArenaConfig.MANDATE_MINT_BATCH);
+                List<BigInteger> slice = new ArrayList<>(indices.subList(0, batch));
+                BigInteger nonce = web3j.ethGetTransactionCount(address,
+                        DefaultBlockParameterName.PENDING).send().getTransactionCount();
+                BigInteger gasPrice = web3j.ethGasPrice().send().getGasPrice();
+                TransactionReceipt rcpt = ArenaContractApi.doMandateMint(
+                        web3j, keyPair, slice, nonce, gasPrice, null);
+                onLog(keyNo, "MINT", "✅ 盟主令铸造成功 " + batch + " 枚，txHash=" + rcpt.getTransactionHash()
+                        + (indices.size() > batch ? "（还剩 " + (indices.size() - batch) + " 枚，请再点一次）" : ""));
+            } catch (ArenaContractApi.RevertedTxException rtx) {
+                onLog(keyNo, "MINT", "✖ 铸造交易回滚(revert)，不重试：" + Web3AndroidUtil.safeMessage(rtx));
+            } catch (Exception e) {
+                onLog(keyNo, "MINT", getString(R.string.toast_op_failed_fmt, Web3AndroidUtil.safeMessage(e)));
+            } finally {
+                Arrays.fill(pwd, (char) 0);
+                if (web3j != null) {
+                    try { web3j.shutdown(); } catch (Exception ignore) {}
+                }
                 AppGlobal.releaseTask();
                 if (destroyed) return;
                 runOnUiThread(() -> {
@@ -699,13 +793,15 @@ public class AccountDetailActivity extends BaseActivity implements TaskLogCallba
         return taskRunning;
     }
 
-    /** 不可操作行（调试地址池）入场/领取从一开始就置灰，刷新保留（只读查询无害） */
+    /** 不可操作行（调试地址池）入场/领取/铸造从一开始就置灰，刷新保留（只读查询无害） */
     private void setActionEnabled(boolean enabled) {
         float alpha = enabled ? 1f : 0.4f;
         btnEnter.setEnabled(enabled);
         btnClaim.setEnabled(enabled);
+        btnMint.setEnabled(enabled);
         btnEnter.setAlpha(alpha);
         btnClaim.setAlpha(alpha);
+        btnMint.setAlpha(alpha);
     }
 
     /** 切换任务运行态：跑任务时三个按钮置灰不可点，避免重复提交抢同一 nonce */
@@ -718,8 +814,10 @@ public class AccountDetailActivity extends BaseActivity implements TaskLogCallba
             float actionAlpha = actionEnabled ? 1f : 0.4f;
             btnEnter.setEnabled(actionEnabled);
             btnClaim.setEnabled(actionEnabled);
+            btnMint.setEnabled(actionEnabled);
             btnEnter.setAlpha(actionAlpha);
             btnClaim.setAlpha(actionAlpha);
+            btnMint.setAlpha(actionAlpha);
             btnRefresh.setEnabled(!running);
             btnRefresh.setAlpha(running ? 0.4f : 1f);
             if (running && scrollLog.getVisibility() != View.VISIBLE) {

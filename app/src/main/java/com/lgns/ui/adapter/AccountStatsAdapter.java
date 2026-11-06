@@ -102,6 +102,10 @@ public class AccountStatsAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
         public BigInteger arenaClaimable;
         /** 师徒可领（wei）：第三波逐地址 lineagePending() 查回，未查到时为 null */
         public BigInteger lineagePending;
+        /** 可铸盟主令枚数（领讫俸禄笔数−已铸NFT）：第三波逐地址 jiaziPage + balanceOf 统计，未查到时为 null */
+        public Integer mintableCount;
+        /** 已铸盟主令枚数（ChampionMandate.balanceOf，官网「已 Mint」）：与可铸成对回填，未查到时为 null */
+        public Integer mintedCount;
         /** 本轮结果还没回来（首次上屏/刷新中）：数值显示占位，状态位留空 */
         public boolean pending;
         /** 本轮查询结束但链上没返回这个地址：显示“未查到” */
@@ -307,8 +311,8 @@ public class AccountStatsAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
         TextView tvBalance, tvEntries, tvTodayChampion, tvTotalChampion, tvPrize;
         /** 师徒分成解锁提示条：今日场次不足 10 场时显示，满额/未开打时隐藏 */
         TextView tvLineageHint;
-        /** 三个待领小标签：甲子/擂台/师徒，与批量领取口径一致 */
-        TextView tvTagJiazi, tvTagArena, tvTagLineage;
+        /** 待领小标签：甲子/擂台/师徒三个额度，外加可铸盟主令枚数，与批量领取口径一致 */
+        TextView tvTagJiazi, tvTagArena, tvTagLineage, tvTagMint;
 
         AccountVH(@NonNull View itemView) {
             super(itemView);
@@ -324,6 +328,7 @@ public class AccountStatsAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
             tvTagJiazi = itemView.findViewById(R.id.tv_tag_jiazi);
             tvTagArena = itemView.findViewById(R.id.tv_tag_arena);
             tvTagLineage = itemView.findViewById(R.id.tv_tag_lineage);
+            tvTagMint = itemView.findViewById(R.id.tv_tag_mint);
         }
 
         void bind(AccountStatsItem item) {
@@ -414,11 +419,12 @@ public class AccountStatsAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
             return bd.toPlainString();
         }
 
-        /** 三个待领标签全隐藏（pending/unknown 行不展示半成品数值） */
+        /** 待领标签全隐藏（pending/unknown 行不展示半成品数值） */
         private void hideTags() {
             tvTagJiazi.setVisibility(View.GONE);
             tvTagArena.setVisibility(View.GONE);
             tvTagLineage.setVisibility(View.GONE);
+            tvTagMint.setVisibility(View.GONE);
         }
 
         /**
@@ -435,6 +441,22 @@ public class AccountStatsAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
                     ctx.getString(R.string.account_tag_arena_fmt, formatToken(item.arenaClaimable)));
             applyTag(tvTagLineage, item.lineagePending,
                     ctx.getString(R.string.account_tag_lineage_fmt, formatToken(item.lineagePending)));
+            // 盟主令两口径：可铸=领讫俸禄笔数−已铸(ChampionMandate.balanceOf)、已铸=balanceOf，按枚而非金额，走独立计数着色
+            applyCountTag(tvTagMint, item.mintableCount,
+                    ctx.getString(R.string.account_tag_mint_fmt,
+                            item.mintableCount, item.mintedCount == null ? 0 : item.mintedCount));
+        }
+
+        /** 枚数型胶囊：null→隐藏；否则显文本并按 &gt;0/0 切绿/灰底（与金额胶囊同一语义） */
+        private void applyCountTag(TextView tv, Integer count, String label) {
+            if (count == null) {
+                tv.setVisibility(View.GONE);
+                return;
+            }
+            tv.setVisibility(View.VISIBLE);
+            tv.setText(label);
+            tv.setBackgroundResource(count > 0
+                    ? R.drawable.bg_tag_green : R.drawable.bg_tag_gray);
         }
 
         /** 单个待领标签：null→隐藏；否则显文本并按 >0/0 切绿/灰底 */
