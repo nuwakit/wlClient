@@ -17,3 +17,16 @@ app/errtxt/
 
 # 空占位：只为让历史会话里的旧路径能打开，不参与构建，随时可删
 /.tmp_escape_test.java
+docs/mint-guide/raw/
+docs/mint-guide/ui_*.xml
+
+# 本地 IDE 规则文件，不进版本库
+/AGENTS.md
+
+
+# Build consistency / secret hygiene: signing keystores must never be committed.
+# wl.jks was tracked since commit 35a7cf1 and has been purged from the whole history;
+# the local file stays in the working tree for signing but is ignored by git.
+*.jks
+*.keystore
+wl.jks
