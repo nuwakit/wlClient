@@ -37,7 +37,8 @@ android {
         resources {
             excludes += ['META-INF/DISCLAIMER']
         }
-        // 禁用时间戳（每次编译时间不同会导致 APK 不同）
+        // 注意：这里只管 so 装载到 APK 内是否压缩存放（本项目的 jniLibs 为空）。
+        // 它不会消除 APK 内的时间戳，“构建可复现”不靠这一行。
         jniLibs {
             useLegacyPackaging = false
         }
@@ -47,6 +48,17 @@ android {
         buildConfig = true
     }
 }
+// 构建一致性：把 javac 版本钉在仓库里，不跟随启动 Gradle 的 IDE 自带 JDK。
+// 实测（2026-11-15）：JBR 21 与 JDK 17 各自编出来的 .class 确实不同（内容哈希不一致），
+// 只是 D8/R8 会把它们归一化成同一份 dex，本次未签名 APK 才恰好相同；那个“恰好”不能当保证。
+// 只换编译器实现，不改 AGP 已传的 -source/-target/-bootclasspath（android.jar 仍作启动类路径）。
+// JDK 17 由 Gradle 自动探测常见安装位置发现；探不到时需先装 JDK 17。
+tasks.withType(JavaCompile).configureEach {
+    javaCompiler = javaToolchains.compilerFor {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
+}
+
 // 固定依赖版本(不用+号)
 dependencies {
     implementation libs.appcompat
