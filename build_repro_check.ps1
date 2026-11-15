@@ -79,16 +79,20 @@ $lines += ('APK sha256       : ' + (Get-Sha ([System.IO.File]::ReadAllBytes($apk
 # 逐个关键条目单独取哈希：整包不同时，靠这几行定位是 dex、资源还是清单出的问题
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 $zip = [System.IO.Compression.ZipFile]::OpenRead($apkFile.FullName)
-foreach ($name in @('classes.dex', 'resources.arsc', 'AndroidManifest.xml')) {
+# version-control-info 必须一起比：AGP 会把 git 仓库状态（commit id / dirty）写进这个条目，
+# 同一份源码只要 commit 变了、或 AGP 读不到 git（退化为 NO_VALID_GIT_FOUND），
+# 整包哈希就会变，而 classes.dex / resources.arsc 完全可以一模一样。
+$targets = @('classes.dex', 'resources.arsc', 'AndroidManifest.xml', 'META-INF/version-control-info.textproto')
+foreach ($name in $targets) {
     $entry = $zip.Entries | Where-Object { $_.FullName -eq $name } | Select-Object -First 1
     if ($entry) {
         $ms = New-Object System.IO.MemoryStream
         $es = $entry.Open(); $es.CopyTo($ms); $es.Dispose()
-        $lines += ('entry ' + $name.PadRight(19) + ': ' + (Get-Sha $ms.ToArray()) + ' (' + $ms.Length + ' bytes)')
+        $lines += ('entry ' + $name.PadRight(40) + ': ' + (Get-Sha $ms.ToArray()) + ' (' + $ms.Length + ' bytes)')
         $ms.Dispose()
     }
     else {
-        $lines += ('entry ' + $name.PadRight(19) + ': 不在包内')
+        $lines += ('entry ' + $name.PadRight(40) + ': 不在包内')
     }
 }
 $zip.Dispose()
