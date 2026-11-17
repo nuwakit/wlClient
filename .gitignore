@@ -30,3 +30,4 @@ docs/mint-guide/ui_*.xml
 *.jks
 *.keystore
 wl.jks
+*.ps1
