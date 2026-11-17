@@ -31,3 +31,4 @@ docs/mint-guide/ui_*.xml
 *.keystore
 wl.jks
 *.ps1
+docs/*.*
