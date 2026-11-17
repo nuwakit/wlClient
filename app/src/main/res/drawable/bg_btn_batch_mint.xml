@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 批量铸造按钮背景：武林盟主令风格——绛红起、朱红承、鎏金收的横向渐变，
+     仿令牌「血色绢底镶金边」；圆角与其它三个批量按钮（bg_btn_rounded + tint）保持一致的 8dp -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <corners android:radius="8dp" />
+    <gradient
+        android:angle="0"
+        android:startColor="#6D0F0F"
+        android:centerColor="#B71C1C"
+        android:endColor="#D89A2E"
+        android:type="linear" />
+</shape>

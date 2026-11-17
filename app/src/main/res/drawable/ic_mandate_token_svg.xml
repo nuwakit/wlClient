@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 武林盟主·号令令牌：对标市售畅销腰牌形制（锦衣卫令牌/五雷号令/将军令）——
+     牌顶半圆云头肩 + 长方牌身 + 平直底座，牌顶一枚如意头凸钮，
+     鎏金外框内套一道内框线，绛红牌面中央刻白色「令」字。
+     对应「铸造盟主令」语义：主界面批量铸造按钮与详情页【铸造】胶囊共用；
+     奖杯 ic_menu_trophy_svg 则专供齿轮菜单「夺冠统计」。 -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <!-- 鎏金外框：半圆云头肩（圆心12,10.4 r6.2）+ 长方牌身到底座 -->
+    <path
+        android:fillColor="#FFE9A825"
+        android:pathData="M6,19.6 V10.4 A6.2,6.2 0 1,1 18.4,10.4 V19.6 A1.4,1.4 0 0,1 17,21 H7.4 A1.4,1.4 0 0,1 6,19.6 Z" />
+    <!-- 牌顶如意凸钮：立于云头之上的小圆钮 -->
+    <path
+        android:fillColor="#FFE9A825"
+        android:pathData="M12,3.1 m-1.15,0 a1.15,1.15 0 1,0 2.3,0 a1.15,1.15 0 1,0 -2.3,0" />
+    <!-- 绛红牌面：外框内缩一圈，底缘留出金色座边 -->
+    <path
+        android:fillColor="#FF7F1010"
+        android:pathData="M7.4,19.6 V10.4 A4.6,4.6 0 1,1 16.6,10.4 V20 H7.4 Z" />
+    <!-- 内框线：贴牌面边缘的细金线（畅销腰牌的双框雕刻感） -->
+    <path
+        android:strokeColor="#CCD9A51B"
+        android:strokeWidth="0.5"
+        android:pathData="M8.6,18.9 V10.4 A3.4,3.4 0 1,1 15.4,10.4 V18.9 Z" />
+    <!-- 「令」字：峰、横、竖撇、点，白色圆头笔画，居中牌面 -->
+    <path
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="1.15"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M10.7,10 L12,8 L13.3,10 M9.2,11.7 H14.8 M12.6,13.1 L9.8,17.8 M13.2,14.2 L15.1,16.2" />
+</vector>
