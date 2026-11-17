@@ -73,7 +73,7 @@ public class AccountDetailActivity extends BaseActivity implements TaskLogCallba
 
     private TextView tvName, tvGroup, tvAddr;
     private ProgressBar pbLoading;
-    private View btnEnter, btnClaim, btnMint, btnRefresh;
+    private View btnEnter, btnClaim, btnMint, btnFuze, btnRefresh;
     private TextView tvLog, tvLogToggle;
     private View logHeader;
     private ScrollView scrollLog;
@@ -84,6 +84,8 @@ public class AccountDetailActivity extends BaseActivity implements TaskLogCallba
     // 领取明细行的数值控件
     private TextView valBattles, valChampionships, valJiaziClaimable, valJiaziReleased,
             valJiaziGranted, valArenaClaimable, valLineagePending, valPrize, valMintableCount;
+    // 江湖福泽明细行（期数/截止/持有/待领）
+    private TextView valFuzePeriod, valFuzeDeadline, valFuzeHeld, valFuzePending;
 
     /** 本页单号任务运行标记：跑任务时禁用三个按钮，避免重复提交抢同一 nonce */
     private volatile boolean taskRunning = false;
@@ -112,6 +114,7 @@ public class AccountDetailActivity extends BaseActivity implements TaskLogCallba
         btnEnter = findViewById(R.id.btn_d_enter);
         btnClaim = findViewById(R.id.btn_d_claim);
         btnMint = findViewById(R.id.btn_d_mint);
+        btnFuze = findViewById(R.id.btn_d_fuze);
         btnRefresh = findViewById(R.id.btn_d_refresh);
         tvLog = findViewById(R.id.tv_detail_log);
         scrollLog = findViewById(R.id.scroll_detail_log);
@@ -140,6 +143,7 @@ public class AccountDetailActivity extends BaseActivity implements TaskLogCallba
         btnEnter.setOnClickListener(v -> handleEnterClick());
         btnClaim.setOnClickListener(v -> handleClaimClick());
         btnMint.setOnClickListener(v -> handleMintClick());
+        btnFuze.setOnClickListener(v -> handleFuzeClick());
 
         // 日志折叠：点标题行切换，交互与主界面 layout_log_header 一致；默认收起由布局 visibility=gone 决定
         logHeader.setOnClickListener(v -> {
@@ -205,6 +209,14 @@ public class AccountDetailActivity extends BaseActivity implements TaskLogCallba
         // 甲子分组里会被当成普通统计行，用户找不到入口；dividerAbove 顺带承担原 KPI 下分隔线
         valMintableCount = addRow(claim, R.string.detail_label_mintable_count, true);
 
+        // 江湖福泽四行紧跟盟主令两口径：持有（已铸）的合彩产出就是福泽，两者同属一条链路；
+        // 口径与官网「我的盟主令」卡片一致（第N期/领取截止/当前持有/待领）
+        addGroupLabel(claim, R.string.detail_group_fuze);
+        valFuzePeriod = addRow(claim, R.string.detail_label_fuze_period, false);
+        valFuzeDeadline = addRow(claim, R.string.detail_label_fuze_deadline, true);
+        valFuzeHeld = addRow(claim, R.string.detail_label_fuze_held, true);
+        valFuzePending = addRow(claim, R.string.detail_label_fuze_pending, true);
+
         addDivider(claim);
 
         addGroupLabel(claim, R.string.detail_group_stats);
@@ -220,7 +232,8 @@ public class AccountDetailActivity extends BaseActivity implements TaskLogCallba
         TextView[] all = {valBalance, valAllowance, valEntriesToday, valEntriesRemaining,
                 valSeated, valInMatchDeposit, valNextFeeSource, valBattles, valChampionships,
                 valJiaziClaimable, valJiaziReleased, valJiaziGranted, valArenaClaimable,
-                valLineagePending, valPrize, valMintableCount};
+                valLineagePending, valPrize, valMintableCount,
+                valFuzePeriod, valFuzeDeadline, valFuzeHeld, valFuzePending};
         for (TextView tv : all) tv.setText(R.string.common_placeholder);
     }
 
@@ -408,15 +421,18 @@ public class AccountDetailActivity extends BaseActivity implements TaskLogCallba
                 try { c = ArenaContractApi.callClaimable(web3j, address); } catch (Exception ignore) {}
                 try { lpc = ArenaContractApi.callLineagePending(web3j, address); } catch (Exception ignore) {}
                 try { mint = ArenaContractApi.callMintCounts(web3j, address); } catch (Exception ignore) {}
+                ArenaContractApi.FuzeSummary f = null;
+                try { f = ArenaContractApi.callFuzeSummary(web3j, address); } catch (Exception ignore) {}
                 final BigInteger claimable = c;
                 final BigInteger lineage = lpc;
                 final ArenaContractApi.MintCounts mintCounts = mint;
+                final ArenaContractApi.FuzeSummary fuzeSummary = f;
                 runOnUiThread(() -> {
                     if (seq != loadSeq.get()) return;
                     loading = false;
                     if (destroyed) return;
                     pbLoading.setVisibility(View.GONE);
-                    fillDetails(s, claimable, lineage, mintCounts);
+                    fillDetails(s, claimable, lineage, mintCounts, fuzeSummary);
                 });
             } catch (Exception e) {
                 Log.e("AccountDetail", "load chain error", e);
@@ -436,8 +452,8 @@ public class AccountDetailActivity extends BaseActivity implements TaskLogCallba
         }).start();
     }
 
-    /** 把 playerSummary + claimable + lineagePending + 盟主令两口径(可铸/已铸)展开到各行；未查到的额度显示占位 */
-    private void fillDetails(ArenaContractApi.PlayerSummary s, BigInteger claimable, BigInteger lineage, ArenaContractApi.MintCounts mintCounts) {
+    /** 把 playerSummary + claimable + lineagePending + 盟主令两口径(可铸/已铸) + 江湖福泽展开到各行；未查到的额度显示占位 */
+    private void fillDetails(ArenaContractApi.PlayerSummary s, BigInteger claimable, BigInteger lineage, ArenaContractApi.MintCounts mintCounts, ArenaContractApi.FuzeSummary fuze) {
         int entriesToday = s.entriesToday != null ? s.entriesToday.intValue() : 0;
         int remaining = s.entriesRemainingToday != null ? s.entriesRemainingToday.intValue() : 0;
 
@@ -466,7 +482,35 @@ public class AccountDetailActivity extends BaseActivity implements TaskLogCallba
         valJiaziReleased.setText(formatToken(s.jiaziReleased));
         valJiaziGranted.setText(formatToken(s.jiaziTotalGranted));
         setMintableCount(valMintableCount, mintCounts);
+        fillFuzeRows(fuze);
         valPrize.setText(formatToken(s.prize));
+    }
+
+    /**
+     * 江湖福泽四行回填：null→全占位（查失败不伪造 0，也不留半截真值半截占位）；
+     * 待领行走与可领 KPI 同一色系语义：&gt;0 领取绿、为 0 次要灰。
+     */
+    private void fillFuzeRows(ArenaContractApi.FuzeSummary fuze) {
+        if (fuze == null || fuze.period == null) {
+            valFuzePeriod.setText(R.string.common_placeholder);
+            valFuzeDeadline.setText(R.string.common_placeholder);
+            valFuzeHeld.setText(R.string.common_placeholder);
+            valFuzePending.setText(R.string.common_placeholder);
+            valFuzePending.setTextColor(getColor(R.color.text_secondary));
+            return;
+        }
+        valFuzePeriod.setText(getString(R.string.detail_fuze_period_value_fmt, fuze.period.intValue()));
+        if (fuze.deadline != null) {
+            valFuzeDeadline.setText(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
+                    .format(new Date(fuze.deadline.longValue() * 1000L)));
+        } else {
+            valFuzeDeadline.setText(R.string.common_placeholder);
+        }
+        valFuzeHeld.setText(getString(R.string.detail_fuze_held_value_fmt, fuze.held.intValue()));
+        valFuzePending.setText(getString(R.string.detail_fuze_pending_value_fmt,
+                fuze.pendingCount, formatToken(fuze.pendingValue)));
+        valFuzePending.setTextColor(getColor(fuze.pendingCount > 0
+                ? R.color.claim_green : R.color.text_secondary));
     }
 
     /** 盟主令两口径（可铸/已铸）：null→占位；否则「可铸 X / 已铸 Y」，可铸&gt;0 领取绿、为0 次要灰，与可领金额同色系 */
@@ -547,6 +591,21 @@ public class AccountDetailActivity extends BaseActivity implements TaskLogCallba
         setRunning(true);
         CryptoKeyPrompt.show(this, pwd -> startMintTask(keyItem, pwd),
                 () -> releaseGlobalTask("MINT"));
+    }
+
+    /** 领取福泽（盟福）：与铸造同一套三层门（本页门 → 全局闸门 → 密码门），通过后走单号福泽领取任务 */
+    private void handleFuzeClick() {
+        if (!guardOperable("FUZE")) return;
+        logOp("FUZE", getString(R.string.detail_log_click_fuze));
+        final KeyListItem keyItem = resolveKeyItemByAddress();
+        if (keyItem == null) {
+            logOp("FUZE", getString(R.string.detail_key_missing));
+            return;
+        }
+        if (!acquireGlobalTask("FUZE")) return;
+        setRunning(true);
+        CryptoKeyPrompt.show(this, pwd -> startFuzeTask(keyItem, pwd),
+                () -> releaseGlobalTask("FUZE"));
     }
 
     /**
@@ -685,6 +744,61 @@ public class AccountDetailActivity extends BaseActivity implements TaskLogCallba
     }
 
     /**
+     * 单号领取福泽（盟福）：解密私钥 → callFuzeSummary 查待领清单 → 最多 {@link ArenaConfig#FUZE_CLAIM_BATCH} 枚发一笔 claim 交易。
+     *
+     * <p>与 {@link #startMintTask} 同一套纪律：查询失败（null）/无可领都不发交易，不伪造成功；
+     * 单笔 ≤8 枚是链上实证上限，超出只领前 8 枚并提示再点（官网也是这个拆批口径）；
+     * revert 不重试，超时不补发，用户刷新后 callFuzeSummary 自然反映真实待领。
+     * 收尾顺序与 {@link #startSingleTask} 一致：清密码 → 关连接 → 放闸门 → 判存活 → 刷 UI。</p>
+     */
+    private void startFuzeTask(final KeyListItem keyItem, final char[] pwd) {
+        new Thread(() -> {
+            Web3j web3j = null;
+            final String keyNo = displayNo(keyItem);
+            try {
+                web3j = Web3AndroidUtil.dialAny();
+                String plainPk = AppGlobal.getKeyStoreManager().decryptCipherText(keyItem.cipherText, pwd);
+                ECKeyPair keyPair = Web3AndroidUtil.pkToKeyPair(plainPk);
+                plainPk = null;
+                ArenaContractApi.FuzeSummary fuze = ArenaContractApi.callFuzeSummary(web3j, address);
+                if (fuze == null) {
+                    onLog(keyNo, "FUZE", "❌ 福泽待领查询失败，未发交易，请稍后重试");
+                    return;
+                }
+                if (fuze.pendingIds.isEmpty()) {
+                    onLog(keyNo, "FUZE", "ℹ 无待领福泽（本期盟主令已全部领取或无可领状态），未发交易");
+                    return;
+                }
+                int batch = Math.min(fuze.pendingIds.size(), ArenaConfig.FUZE_CLAIM_BATCH);
+                List<BigInteger> slice = new ArrayList<>(fuze.pendingIds.subList(0, batch));
+                BigInteger nonce = web3j.ethGetTransactionCount(address,
+                        DefaultBlockParameterName.PENDING).send().getTransactionCount();
+                BigInteger gasPrice = web3j.ethGasPrice().send().getGasPrice();
+                TransactionReceipt rcpt = ArenaContractApi.doFuzeClaim(
+                        web3j, keyPair, fuze.period, slice, nonce, gasPrice, null);
+                onLog(keyNo, "FUZE", "✅ 福泽领取成功 第 " + fuze.period.intValue() + " 期 " + batch + " 枚，txHash="
+                        + rcpt.getTransactionHash()
+                        + (fuze.pendingIds.size() > batch ? "（还剩 " + (fuze.pendingIds.size() - batch) + " 枚，请再点一次）" : ""));
+            } catch (ArenaContractApi.RevertedTxException rtx) {
+                onLog(keyNo, "FUZE", "✖ 福泽领取交易回滚(revert)，不重试：" + Web3AndroidUtil.safeMessage(rtx));
+            } catch (Exception e) {
+                onLog(keyNo, "FUZE", getString(R.string.toast_op_failed_fmt, Web3AndroidUtil.safeMessage(e)));
+            } finally {
+                Arrays.fill(pwd, (char) 0);
+                if (web3j != null) {
+                    try { web3j.shutdown(); } catch (Exception ignore) {}
+                }
+                AppGlobal.releaseTask();
+                if (destroyed) return;
+                runOnUiThread(() -> {
+                    setRunning(false);
+                    loadData();
+                });
+            }
+        }).start();
+    }
+
+    /**
      * 操作前置门（第一层，只管本页）：不可操作行、本页任务进行中都在日志里说明原因并落库，不弹 Toast。
      *
      * <p><b>两层门必须按「本地先判、全局后判」顺序调</b>：这里只判本页的 {@code operable} 与
@@ -793,15 +907,17 @@ public class AccountDetailActivity extends BaseActivity implements TaskLogCallba
         return taskRunning;
     }
 
-    /** 不可操作行（调试地址池）入场/领取/铸造从一开始就置灰，刷新保留（只读查询无害） */
+    /** 不可操作行（调试地址池）入场/领取/铸造/盟福从一开始就置灰，刷新保留（只读查询无害） */
     private void setActionEnabled(boolean enabled) {
         float alpha = enabled ? 1f : 0.4f;
         btnEnter.setEnabled(enabled);
         btnClaim.setEnabled(enabled);
         btnMint.setEnabled(enabled);
+        btnFuze.setEnabled(enabled);
         btnEnter.setAlpha(alpha);
         btnClaim.setAlpha(alpha);
         btnMint.setAlpha(alpha);
+        btnFuze.setAlpha(alpha);
     }
 
     /** 切换任务运行态：跑任务时三个按钮置灰不可点，避免重复提交抢同一 nonce */
@@ -815,9 +931,11 @@ public class AccountDetailActivity extends BaseActivity implements TaskLogCallba
             btnEnter.setEnabled(actionEnabled);
             btnClaim.setEnabled(actionEnabled);
             btnMint.setEnabled(actionEnabled);
+            btnFuze.setEnabled(actionEnabled);
             btnEnter.setAlpha(actionAlpha);
             btnClaim.setAlpha(actionAlpha);
             btnMint.setAlpha(actionAlpha);
+            btnFuze.setAlpha(actionAlpha);
             btnRefresh.setEnabled(!running);
             btnRefresh.setAlpha(running ? 0.4f : 1f);
             if (running && scrollLog.getVisibility() != View.VISIBLE) {

@@ -81,14 +81,7 @@ public class ArenaConfig {
      * 只有展示与统计走 {@code getDisplayKeyItems()} / {@code getSelectedKeyItem()}。</p>
      */
     public static final String[] DEBUG_FIXED_ADDRs = {
-            "0x86f990B428e4f1aaCf3cD0272941b52a74d36c8E",
-            "0x9096eef52293291fff2c3a99dbb9b9d08fb015b0",
-            "0x1bac261b1684bc33010bd204a49d0f1303cfd2b3",
-            "0xfca0a08BF141A254F684E5Ca82BAeF7Ffe915d34",
-            "0x66E4B4747279C34F148474a71E110578493686C6",
-            "0x2913483c90C01330a37fe6FDC35777B5332c5B7B",
-            "0xe5e46ee6084ce94f1c655393c0990acd19512a84",
-            "0xAF5c405Ec74B45D06960A621CF58C0A7ce09eeB1"
+            ""
     };
 
     /**
@@ -181,6 +174,21 @@ public class ArenaConfig {
      * 还有剩余时再点一次（见 {@code ArenaContractApi.doMandateMint}）。
      */
     public static final int MANDATE_MINT_BATCH = 24;
+
+    /**
+     * 江湖福泽（MandateRewards）独立合约地址，部署于 Anubis(6714)。
+     * 它按期为盟主令（{@link #MANDATE_NFT_ADDR}）发放福泽，NFT() 回读应等于该 NFT 地址；
+     * 地址与全部方法选择器取自官网前端 mandate 配置（funverse.gg/mandate 的 REWARDS_ADDRESS
+     * 与 contracts.*.json），并对演示账号 0xfca0 逐项链上实证（持有/期数/截止/待领全对上）。
+     */
+    public static final String MANDATE_REWARDS_ADDR = "0xff1e7170c041c0e37bf9b9ce0feed600f3deaaaa";
+    /** 福泽一期时长秒数 518400 = 6 天（官网前端 TIME 常量）：期数 = 2 + (now − 第1期截止) / 本值 */
+    public static final long FUZE_PERIOD_SECONDS = 518400L;
+    /** 领取福泽单笔上限（对齐官网前端 BATCH=8）：超 8 枚由调用方拆多笔，逐笔签名发送 */
+    public static final int FUZE_CLAIM_BATCH = 8;
+    /** 福泽状态=待领（rewardOf 返回 [value,status] 的 status）：唯一值得发领取交易的状态；3=已领、4=福缘已尽、5=本期未开奖、6=领取暂缓 */
+    public static final int FUZE_STATUS_CLAIMABLE = 2;
+
     /** 日切偏移 8 小时：合约按 UTC+8 算「今天」，本地算今日场次时必须加上这个偏移 */
     public static final long DAY_OFFSET = 8 * 3600L;
 
@@ -287,6 +295,11 @@ public class ArenaConfig {
      * （64 枚≈ 12.25M → 24 枚≈ 4.6M）再留余量取 5M；gasLimit 只是上限，实际按 gasUsed 扣费。
      */
     public static final BigInteger GAS_LIMIT_MANDATE_MINT = BigInteger.valueOf(5_000_000);
+    /**
+     * 领取福泽（MandateRewards.claim(uint256,uint256[])）的 gas 上限：单批 ≤ 8 枚，
+     * 含逐枚核销与一笔代币发放，取 1M 留足余量；gasLimit 只是上限，实际按 gasUsed 扣费。
+     */
+    public static final BigInteger GAS_LIMIT_CLAIM_FUZE = BigInteger.valueOf(1_000_000);
     /** 普通 ERC20 transfer（批量转账收款方入账等场景） */
     public static final BigInteger GAS_LIMIT_ERC20_TRANSFER = BigInteger.valueOf(100000);
     /** 补 Gas 走 GAS_TOKEN 的 transfer：实测 gasUsed ≈ 34,768，留一倍余量防 OOG */

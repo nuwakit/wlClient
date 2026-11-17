@@ -247,6 +247,7 @@
     <string name="common_btn_batch_enter">批量入场</string>
     <string name="common_btn_batch_claim">批量领取</string>
     <string name="common_btn_batch_mint">批量铸造</string>
+    <string name="common_btn_batch_fuze">统收盟福</string>
     <string name="common_btn_full_workflow">完整流程</string>
     <!-- 运行中把「正在跑的那个按钮」换成停止键：点一下 = 打完当前这一圈再停，不会留下半轮锁仓 -->
     <string name="common_btn_stop_after_round">停止</string>
@@ -335,6 +336,13 @@
     <string name="account_tag_arena_fmt">擂台 %1$s</string>
     <string name="account_tag_lineage_fmt">师徒 %1$s</string>
     <string name="account_tag_mint_fmt">盟主令 可铸%1$d/已铸%2$d</string>
+    <string name="account_tag_fuze_fmt">福泽 待领%1$d枚·%2$s</string>
+    <!-- 待领胶囊占位文案：链上数据未回填/未查到时先占位显示，与详情页占位口径一致，不伪造 0 -->
+    <string name="account_tag_jiazi_ph">甲子 --</string>
+    <string name="account_tag_arena_ph">擂台 --</string>
+    <string name="account_tag_lineage_ph">师徒 --</string>
+    <string name="account_tag_mint_ph">盟主令 --</string>
+    <string name="account_tag_fuze_ph">福泽 --</string>
     <!-- 行尾 › 的无障碍描述：读屏时代替纯图标，说明点击去向 -->
     <string name="account_row_open_detail">查看该账号详情</string>
 
@@ -345,6 +353,7 @@
     <string name="detail_btn_enter">入场</string>
     <string name="detail_btn_claim">领取</string>
     <string name="detail_btn_mint">铸造</string>
+    <string name="detail_btn_fuze">盟福</string>
     <string name="detail_refresh">刷新</string>
     <!-- 明细行标签：右侧数值在代码里回填，标签固定不变 -->
     <string name="detail_label_wallet_balance">钱包余额 (fLGNS)</string>
@@ -361,6 +370,14 @@
     <string name="detail_label_jiazi_granted">甲子累计发放 (fLGNS)</string>
     <string name="detail_label_mintable_count">盟主令 (可铸/已铸)</string>
     <string name="detail_mintable_value_fmt">可铸 %1$d / 已铸 %2$d</string>
+    <!-- 江湖福泽四行（期数/截止/持有/待领）：口径与官网「我的盟主令」卡片一致，链路实证见 callFuzeSummary -->
+    <string name="detail_label_fuze_period">福泽期数</string>
+    <string name="detail_fuze_period_value_fmt">第 %1$d 期</string>
+    <string name="detail_label_fuze_deadline">领取截止</string>
+    <string name="detail_label_fuze_held">当前持有</string>
+    <string name="detail_fuze_held_value_fmt">%1$d 枚</string>
+    <string name="detail_label_fuze_pending">待领福泽</string>
+    <string name="detail_fuze_pending_value_fmt">%1$d 枚 · %2$s fLGNS</string>
     <string name="detail_label_arena_claimable">擂台可领 (fLGNS)</string>
     <string name="detail_label_lineage_pending">师徒可领 (fLGNS)</string>
     <string name="detail_label_prize">可抵门票奖金 (fLGNS)</string>
@@ -369,6 +386,7 @@
     <string name="detail_group_fee">门票</string>
     <string name="detail_group_stats">累计</string>
     <string name="detail_group_jiazi">甲子</string>
+    <string name="detail_group_fuze">江湖福泽</string>
     <!-- KPI 数值的单位后缀：与数字同基线、小一号，不占标签位 -->
     <string name="detail_unit_match">场</string>
     <string name="detail_unit_flgns">fLGNS</string>
@@ -384,6 +402,7 @@
     <string name="detail_log_click_enter">点击【入场】，准备单号入场</string>
     <string name="detail_log_click_claim">点击【领取】，准备单号领取</string>
     <string name="detail_log_click_mint">点击【铸造】，准备铸造盟主令</string>
+    <string name="detail_log_click_fuze">点击【盟福】，准备领取福泽</string>
     <string name="detail_log_click_refresh">点击【刷新】，重新拉取链上明细</string>
     <string name="detail_key_missing">未在本机找到该地址对应的私钥，无法执行操作</string>
     <!-- 跨页任务闸门与密码弹窗取消：按钮操作改走日志，不弹 Toast -->

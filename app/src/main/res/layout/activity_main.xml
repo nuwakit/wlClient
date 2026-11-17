@@ -318,29 +318,32 @@
 
         <View android:layout_width="4dp" android:layout_height="0dp" />
 
+        <!-- 统收盟福（批量领取福泽）：与铸造同风格——青绿鎏金渐变底 + 礼盒图标 + 鎏金文字。
+             不设 backgroundTint：停止置灰靠 alpha、恢复靠 setBackgroundTintList(null)，与铸造同套路。
+             原「完整流程」按钮已收入 ⋮ 菜单（日志管理下方） -->
         <LinearLayout
-            android:id="@+id/btn_full_workflow"
+            android:id="@+id/btn_batch_fuze"
             android:layout_width="0dp"
             android:layout_height="40dp"
             android:layout_weight="1"
             android:orientation="horizontal"
             android:gravity="center"
-            android:background="@drawable/bg_btn_rounded"
-            android:backgroundTint="#7B1FA2"
+            android:background="@drawable/bg_btn_batch_fuze"
             android:clickable="true"
             android:focusable="true">
             <ImageView
-                android:layout_width="16dp"
-                android:layout_height="16dp"
-                android:src="@drawable/ic_workflow_svg"
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:src="@drawable/ic_fuze_svg"
                 android:layout_marginEnd="4dp" />
             <TextView
-                android:id="@+id/tv_btn_workflow_label"
+                android:id="@+id/tv_btn_fuze_label"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="@string/common_btn_full_workflow"
-                android:textColor="#ffffff"
-                android:textSize="13sp" />
+                android:text="@string/common_btn_batch_fuze"
+                android:textColor="#FFE082"
+                android:textSize="13sp"
+                android:textStyle="bold" />
         </LinearLayout>
     </LinearLayout>
 

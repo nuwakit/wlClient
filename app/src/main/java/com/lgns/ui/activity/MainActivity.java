@@ -23,6 +23,7 @@ import com.lgns.batch.BatchFundTask;
 import com.lgns.batch.BatchEnterTask;
 import com.lgns.batch.BatchClaimTask;
 import com.lgns.batch.BatchMintTask;
+import com.lgns.batch.BatchFuzeTask;
 import com.lgns.batch.BatchWorkflowTask;
 import com.lgns.ui.adapter.AccountStatsAdapter;
 import com.lgns.manager.KeyStoreManager;
@@ -103,17 +104,18 @@ public class MainActivity extends BaseActivity implements TaskLogCallback, Batch
     private TextView btnSecurityWarn;
     /** 标题栏副标题：加载/同步/就绪/失败/运行中，与按钮门控同源 */
     private TextView tvStatusSub;
-    private LinearLayout btnBatchEnter, btnBatchClaim, btnBatchMint, btnFullWorkflow;
+    private LinearLayout btnBatchEnter, btnBatchClaim, btnBatchMint, btnBatchFuze;
     /** 四个可见批量按钮的运行态视图：运行中要拿「正在跑的那个」当停止键用 */
     private final List<TaskButton> taskButtons = new ArrayList<>(4);
     /**
-     * 充值/入场/领取/铸造/完整流程五个任务的运行态标记。
+     * 充值/入场/领取/铸造/统收盟福/完整流程六个任务的运行态标记。
      *
-     * <p>tbFund 不再对应任何主界面控件（充值按钮已移除，入口只剩齿轮菜单→确认页→
-     * {@code onActivityResult} 回传）：它只作 {@code activeTaskButton} 的标记用，
-     * 不进 {@code taskButtons} 列表，因此充值期间四个可见按钮全部置灰、无就地停止出口。</p>
+     * <p>tbFund 与 tbWorkflow 不再对应主界面控件（充值入口在齿轮菜单→确认页，
+     * 完整流程按钮已移入齿轮菜单的「日志管理」下方）：它们只作 {@code activeTaskButton}
+     * 的标记用，不进 {@code taskButtons} 列表，因此这两类任务期间四个可见按钮全部置灰，
+     * 停止出口在齿轮菜单里重点一次「完整流程」（走同一套 onTaskButtonClick 停止语义）。</p>
      */
-    private TaskButton tbFund, tbEnter, tbClaim, tbMint, tbWorkflow;
+    private TaskButton tbFund, tbEnter, tbClaim, tbMint, tbFuze, tbWorkflow;
     /** 当前正在跑的那个按钮：运行中只有它可点，点一下 = 打完这一圈再停 */
     private volatile TaskButton activeTaskButton;
     /** 本次运行是否已经按过停止：按下后按钮切「停止中」并禁用，避免连点刷日志 */
@@ -256,7 +258,7 @@ public class MainActivity extends BaseActivity implements TaskLogCallback, Batch
         btnBatchEnter = findViewById(R.id.btn_batch_enter);
         btnBatchClaim = findViewById(R.id.btn_batch_claim);
         btnBatchMint = findViewById(R.id.btn_batch_mint);
-        btnFullWorkflow = findViewById(R.id.btn_full_workflow);
+        btnBatchFuze = findViewById(R.id.btn_batch_fuze);
         bindTaskButtons();
         tvLog = findViewById(R.id.tv_log);
         scrollView = findViewById(R.id.scrollView);
@@ -285,12 +287,14 @@ public class MainActivity extends BaseActivity implements TaskLogCallback, Batch
                 R.string.common_btn_batch_claim, btnBatchClaim.getBackgroundTintList(), false);
         tbMint = new TaskButton(btnBatchMint, findViewById(R.id.tv_btn_mint_label),
                 R.string.common_btn_batch_mint, btnBatchMint.getBackgroundTintList(), false);
-        tbWorkflow = new TaskButton(btnFullWorkflow, findViewById(R.id.tv_btn_workflow_label),
-                R.string.common_btn_full_workflow, btnFullWorkflow.getBackgroundTintList(), true);
+        tbFuze = new TaskButton(btnBatchFuze, findViewById(R.id.tv_btn_fuze_label),
+                R.string.common_btn_batch_fuze, btnBatchFuze.getBackgroundTintList(), false);
+        // 完整流程入口已移入齿轮菜单：无视图标记，不进 taskButtons（停止出口见菜单项重点）
+        tbWorkflow = new TaskButton(null, null, R.string.common_btn_full_workflow, null, true);
         taskButtons.add(tbEnter);
         taskButtons.add(tbClaim);
         taskButtons.add(tbMint);
-        taskButtons.add(tbWorkflow);
+        taskButtons.add(tbFuze);
     }
 
     /**
@@ -315,7 +319,7 @@ public class MainActivity extends BaseActivity implements TaskLogCallback, Batch
         btnBatchEnter.setOnClickListener(v -> onTaskButtonClick(this::handleBatchEnterClick));
         btnBatchClaim.setOnClickListener(v -> onTaskButtonClick(this::handleBatchClaimClick));
         btnBatchMint.setOnClickListener(v -> onTaskButtonClick(this::handleBatchMintClick));
-        btnFullWorkflow.setOnClickListener(v -> onTaskButtonClick(this::handleFullWorkflowClick));
+        btnBatchFuze.setOnClickListener(v -> onTaskButtonClick(this::handleBatchFuzeClick));
 
         // 统计加载失败时，汇总栏兼作重试入口（其他状态下点按无副作用）
         tvSummaryEnter.setOnClickListener(v -> {
@@ -389,6 +393,44 @@ public class MainActivity extends BaseActivity implements TaskLogCallback, Batch
                 } catch (Exception e) {
                     runOnUiThread(() -> appendLog("", "MINT", "错误：批量铸造外层异常：" + e.getMessage()));
                     Log.e("BATCH_MINT", "异常", e);
+                } finally {
+                    Arrays.fill(pwdCharArray, (char) 0);
+                    runOnUiThread(this::endTask);
+                }
+            }).start();
+        });
+    }
+
+    /**
+     * 统收盟福：与铸造同一套外壳（互斥 → 就绪 → 启用账号 → 密码 → 后台执行），
+     * 具体领哪几枚、按什么批次领由 {@link BatchFuzeTask} 决定。
+     *
+     * <p>福泽打在独立 MandateRewards 合约，待领清单只含本期 rewardOf status=待领 的盟主令，
+     * 单笔最多 8 枚（超批在本任务内连续拆批），所以点之前不必先跑铸造。</p>
+     */
+    private void handleBatchFuzeClick() {
+        // 两层门「本地先判、全局后判」：先看本页 isTaskRunning（快，且能提示“本页正在跑”），
+        // 再靠短路求值判跨页闸门（详情页单号任务可能还在跑，本页看不到它，不判就会并发签名）
+        if (isTaskRunning || AppGlobal.isTaskBusy()) {
+            android.widget.Toast.makeText(this, R.string.task_running, android.widget.Toast.LENGTH_SHORT).show();
+            return;
+        }
+        if (!ensureAccountDataReady()) return;
+        List<KeyListItem> enabledList = getEnabledKeyItems();
+        if (enabledList.isEmpty()) {
+            android.widget.Toast.makeText(this, R.string.no_enabled_key, android.widget.Toast.LENGTH_SHORT).show();
+            return;
+        }
+        Log.d("UI_CLICK", "点击【统收盟福】按钮");
+        // 密码弹窗阶段不锁按钮：取消或输错都要保持可点，密码校验通过后才进入任务锁定
+        dialogHelper.showDecryptPasswordDialog(pwdCharArray -> {
+            beginTask(tbFuze);
+            new Thread(() -> {
+                try {
+                    BatchFuzeTask.batchFuzeAllResume(getApplicationContext(), this, enabledList, pwdCharArray);
+                } catch (Exception e) {
+                    runOnUiThread(() -> appendLog("", "FUZE", "错误：统收盟福外层异常：" + e.getMessage()));
+                    Log.e("BATCH_FUZE", "异常", e);
                 } finally {
                     Arrays.fill(pwdCharArray, (char) 0);
                     runOnUiThread(this::endTask);
@@ -528,6 +570,27 @@ public class MainActivity extends BaseActivity implements TaskLogCallback, Batch
                 }
             }).start();
         });
+    }
+
+    /**
+     * 齿轮菜单「完整流程」的唯一入口（菜单项不被运行锁置灰，这里自己分流）。
+     *
+     * <p>运行中分两种：正在跑的就是完整流程时，再点菜单项转成停止请求
+     * （tbWorkflow 是 roundBoundary，与以前按钮留成红色停止键同一套语义，打完这一圈封盘才停，
+     * 避免半轮锁仓）；跑的是其它任务时只提示不抢闸门、绝不误停——菜单项的语义是「启动完整流程」，
+     * 不是万能停止键。空闲时与旧按钮点击同路（含 modal 弹窗去抖）。</p>
+     */
+    public void onMenuFullWorkflowClick() {
+        if (isTaskRunning) {
+            if (activeTaskButton == tbWorkflow) {
+                requestStop();
+            } else {
+                android.widget.Toast.makeText(this, R.string.task_running, android.widget.Toast.LENGTH_SHORT).show();
+            }
+            return;
+        }
+        if (dialogHelper.isModalDialogShowing()) return;
+        handleFullWorkflowClick();
     }
 
     /** 任务开始/结束时统一改按钮可用性；真正的判定条件在 {@link #applyButtonEnabledState()} */
@@ -1220,6 +1283,11 @@ public class MainActivity extends BaseActivity implements TaskLogCallback, Batch
                 item.lineagePending = old.lineagePending;
                 item.mintableCount = old.mintableCount;
                 item.mintedCount = old.mintedCount;
+                item.fuzePendingCount = old.fuzePendingCount;
+                item.fuzePendingValue = old.fuzePendingValue;
+                // 胶囊就绪态随数值一起继承：旧行第三波已查完就直接显继承来的真值，
+                // 否则值接过来了却按占位画，重新发明一遍闪烁问题
+                item.tagsReady = old.tagsReady;
                 item.pending = old.pending;
                 item.unknown = old.unknown;
             } else {
@@ -1607,17 +1675,22 @@ public class MainActivity extends BaseActivity implements TaskLogCallback, Batch
                     final Map<String, BigInteger> claimMap = new java.util.HashMap<>();
                     final Map<String, BigInteger> lineageMap = new java.util.HashMap<>();
                     final Map<String, ArenaContractApi.MintCounts> mintMap = new java.util.HashMap<>();
+                    final Map<String, ArenaContractApi.FuzeSummary> fuzeMap = new java.util.HashMap<>();
                     for (String addr : slice) {
                         BigInteger c = null, lpc = null;
                         ArenaContractApi.MintCounts mint = null;
+                        ArenaContractApi.FuzeSummary fuze = null;
                         try { c = ArenaContractApi.callClaimable(web3j, addr); } catch (Exception ignore) {}
                         try { lpc = ArenaContractApi.callLineagePending(web3j, addr); } catch (Exception ignore) {}
                         // 盟主令两口径：逐地址 jiaziPage 领讫笔数 − ChampionMandate.balanceOf 已铸 = 可铸，与领取后刷新口径一致
                         try { mint = ArenaContractApi.callMintCounts(web3j, addr); } catch (Exception ignore) {}
+                        // 福泽待领：逐地址 callFuzeSummary（持较多时逐枚 rewardOf 较慢，故只在本回填波里跑）
+                        try { fuze = ArenaContractApi.callFuzeSummary(web3j, addr); } catch (Exception ignore) {}
                         if (c == null && lpc == null) claimMiss++;
                         claimMap.put(addr, c);
                         lineageMap.put(addr, lpc);
                         mintMap.put(addr, mint);
+                        fuzeMap.put(addr, fuze);
                     }
                     doneClaim += slice.size();
                     final int fDoneClaim = doneClaim;
@@ -1629,11 +1702,16 @@ public class MainActivity extends BaseActivity implements TaskLogCallback, Batch
                             BigInteger c = claimMap.get(addr);
                             BigInteger lpc = lineageMap.get(addr);
                             ArenaContractApi.MintCounts mint = mintMap.get(addr);
+                            ArenaContractApi.FuzeSummary fuze = fuzeMap.get(addr);
                             for (AccountStatsAdapter.AccountStatsItem it : bucket) {
                                 it.arenaClaimable = c;
                                 it.lineagePending = lpc;
                                 it.mintableCount = mint != null ? mint.mintable : null;
                                 it.mintedCount = mint != null ? mint.minted : null;
+                                it.fuzePendingCount = fuze != null ? fuze.pendingCount : null;
+                                it.fuzePendingValue = fuze != null ? fuze.pendingValue : null;
+                                // 第三波已跑完这行：胶囊从统一占位切到真值（单项查失败仍显占位）
+                                it.tagsReady = true;
                             }
                         }
                         accountStatsAdapter.notifyStatsChanged();

@@ -247,6 +247,18 @@ public class ArenaContractApi {
     /** ChampionMandate.used(address,uint256) 选择器：某笔俸禄 index 是否已铸过盟主令 */
     private static final String SEL_MANDATE_USED = "0xad04dc3f";
 
+    // ---- 江湖福泽（MandateRewards）：以下选择器均取自官网 contracts.*.json ABI 清单，链上干跑实证 ----
+    /** MandateRewards.claimDeadline(uint256) 选择器：某期领取截止时间戳（第 1 期用于反推当前期数） */
+    private static final String SEL_FUZE_CLAIM_DEADLINE = "0xa32093c0";
+    /** MandateRewards.periodInfo(uint256) 选择器：一期元信息共 17 个字（[5]=纳入范围起始 tokenId、[6]=条数、[16]=phase） */
+    private static final String SEL_FUZE_PERIOD_INFO = "0xa4d80086";
+    /** MandateRewards.rewardOf(uint256,uint256) 选择器：某期某枚盟主令的福泽，返回 [value,status] */
+    private static final String SEL_FUZE_REWARD_OF = "0x3bf2a83e";
+    /** MandateRewards.claim(uint256,uint256[]) 选择器：领取指定期数的指定 tokenId 清单福泽 */
+    private static final String SEL_FUZE_CLAIM = "0xb1b66652";
+    /** ChampionMandate.ownedPage(address,uint256,uint256) 选择器：持有清单分页，返回 [0x40,total,len,ids...] */
+    private static final String SEL_MANDATE_OWNED_PAGE = "0x7d2fad23";
+
     /**
      * 手拼 jiaziPage 调用数据：selector + owner(32B) + from(32B) + count(32B)。
      * 与 encodePlayerHistoryLatestData 同一套路：不走 FunctionEncoder，直接用字节码验证过的 selector。
@@ -403,6 +415,115 @@ public class ArenaContractApi {
             return out;
         } catch (Exception e) {
             Log.d("RPC_DEBUG", "callMintableIndices[" + owner + "] 失败：" + e.getMessage());
+            return null;
+        }
+    }
+
+    /** uint256 → 64 位 hex 字（不含 0x），手拼 calldata 统一用它，防多处重复写补零逻辑 */
+    private static String wordHex(BigInteger v) {
+        return Numeric.toHexStringNoPrefixZeroPadded(v, 64);
+    }
+
+    /** 通用 eth_call：返回原始 hex；RPC 报错抛异常，由上层归为 null（不伪造 0） */
+    private static String ethCallRaw(Web3j web3j, String to, String data) throws Exception {
+        EthCall res = web3j.ethCall(
+                Transaction.createEthCallTransaction(null, to, data),
+                DefaultBlockParameterName.LATEST).send();
+        if (res.hasError()) throw new Exception("eth_call[" + to + "] error:" + res.getError().getMessage());
+        return res.getValue();
+    }
+
+    /** 福泽汇总查询结果（对齐官网「我的盟主令 / 江湖福泽」区块），金额单位 wei */
+    public static class FuzeSummary {
+        /** 当前期数（由 now 与 claimDeadline(1) 反推，非链上直接返回） */
+        public BigInteger period;
+        /** 本期领取截止时间戳（秒）；官网展示为截止−1 秒 */
+        public BigInteger deadline;
+        /** 当前持有盟主令枚数（ownedPage 的 total） */
+        public BigInteger held = BigInteger.ZERO;
+        /** 待领枚数（rewardOf status=待领 的个数，与 pendingIds 大小一致） */
+        public int pendingCount;
+        /** 待领福泽合计，wei */
+        public BigInteger pendingValue = BigInteger.ZERO;
+        /** 待领 tokenId 清单（claim 交易入参，按 id 升序） */
+        public List<BigInteger> pendingIds = new ArrayList<>();
+    }
+
+    /**
+     * 查询江湖福泽：当前期数、领取截止、持有枚数、待领枚数与合计（对齐官网 rewards 页口径）。
+     *
+     * <p>链路（对演示账号 0xfca0 逐项链上实证：持有 9／第 1 期／截止 2026-11-11 23:59:59／
+     * 待领 7 枚·22.2 fLGNS，与官网截图完全一致）：</p>
+     * <ol>
+     *   <li>期数：firstEnd={@code claimDeadline(1)}，now＜firstEnd 取 1，否则
+     *       2+(now−firstEnd)/{@link ArenaConfig#FUZE_PERIOD_SECONDS}；</li>
+     *   <li>持有：ChampionMandate {@code ownedPage(地址,offset,32)} 分页取全量 tokenId；</li>
+     *   <li>范围：{@code periodInfo(period)} 第 [5]/[6] 字给出纳入范围 [first,first+count)，
+     *       范围内才需查 rewardOf（范围外必无福泽，省 RPC）；</li>
+     *   <li>待领：逐枚 {@code rewardOf(period,id)}，status=2 计入待领并累加 value。</li>
+     * </ol>
+     *
+     * <p>全程只读；任一 RPC 失败返回 null（调用方按“未查到”隐藏，不伪造 0）。
+     * 持有较多时逐枚 rewardOf 较慢，适合单账号详情与列表第三波回填，不适合超大并发。</p>
+     */
+    public static FuzeSummary callFuzeSummary(Web3j web3j, String owner) {
+        try {
+            BigInteger now = web3j.ethGetBlockByNumber(DefaultBlockParameterName.LATEST, false)
+                    .send().getBlock().getTimestamp();
+            String addrPad = String.format("%64s", Numeric.cleanHexPrefix(owner)).replace(' ', '0');
+            // 1) 期数：第 1 期截止反推（官网 rewards 页同一公式）
+            BigInteger firstEnd = decodeUint256At(ethCallRaw(web3j, ArenaConfig.MANDATE_REWARDS_ADDR,
+                    SEL_FUZE_CLAIM_DEADLINE + wordHex(BigInteger.ONE)), 0);
+            // 注意必须先除后加：写成 valueOf(2).add(diff).divide(...) 会被链式求值
+            // 算成 (2+diff)/周期，跨期当天 diff 还不足一个周期 → period=0 →
+            // claimDeadline(0) 直接 revert（错误数据 0x6dac6a09），福泽胶囊整列消失
+            BigInteger period = now.compareTo(firstEnd) < 0
+                    ? BigInteger.ONE
+                    : BigInteger.valueOf(2).add(now.subtract(firstEnd)
+                            .divide(BigInteger.valueOf(ArenaConfig.FUZE_PERIOD_SECONDS)));
+            String periodWord = wordHex(period);
+            FuzeSummary fs = new FuzeSummary();
+            fs.period = period;
+            fs.deadline = decodeUint256At(ethCallRaw(web3j, ArenaConfig.MANDATE_REWARDS_ADDR,
+                    SEL_FUZE_CLAIM_DEADLINE + periodWord), 0);
+            // 2) periodInfo：纳入范围 [first, first+count)，字段少一次回包全拿
+            String info = ethCallRaw(web3j, ArenaConfig.MANDATE_REWARDS_ADDR,
+                    SEL_FUZE_PERIOD_INFO + periodWord);
+            if (Numeric.cleanHexPrefix(info).length() < 17 * 64)
+                throw new Exception("periodInfo 返回长度不足");
+            BigInteger first = decodeUint256At(info, 5);
+            BigInteger rangeEnd = first.add(decodeUint256At(info, 6));
+            // 3) ownedPage 分页取持有清单（每页≤ 32，官网同接口同上限）
+            BigInteger total;
+            BigInteger offset = BigInteger.ZERO;
+            List<BigInteger> heldIds = new ArrayList<>();
+            do {
+                String raw = ethCallRaw(web3j, ArenaConfig.MANDATE_NFT_ADDR,
+                        SEL_MANDATE_OWNED_PAGE + addrPad + wordHex(offset) + wordHex(BigInteger.valueOf(32)));
+                if (decodeUint256At(raw, 0).compareTo(BigInteger.valueOf(64)) != 0)
+                    throw new Exception("ownedPage 返回异常");
+                total = decodeUint256At(raw, 1);
+                long len = decodeUint256At(raw, 2).longValue();
+                if (len > 32) throw new Exception("ownedPage 单页超长");
+                for (long i = 0; i < len; i++) heldIds.add(decodeUint256At(raw, 3 + (int) i));
+                offset = offset.add(BigInteger.valueOf(len));
+                if (len == 0) break;
+            } while (offset.compareTo(total) < 0);
+            fs.held = total;
+            // 4) 逐枚 rewardOf：只查纳入范围，status=待领 才计入
+            for (BigInteger id : heldIds) {
+                if (id.compareTo(first) < 0 || id.compareTo(rangeEnd) >= 0) continue;
+                String rr = ethCallRaw(web3j, ArenaConfig.MANDATE_REWARDS_ADDR,
+                        SEL_FUZE_REWARD_OF + periodWord + wordHex(id));
+                if (decodeUint256At(rr, 1).intValue() == ArenaConfig.FUZE_STATUS_CLAIMABLE) {
+                    fs.pendingCount++;
+                    fs.pendingValue = fs.pendingValue.add(decodeUint256At(rr, 0));
+                    fs.pendingIds.add(id);
+                }
+            }
+            return fs;
+        } catch (Exception e) {
+            Log.d("RPC_DEBUG", "callFuzeSummary[" + owner + "] 失败：" + e.getMessage());
             return null;
         }
     }
@@ -924,6 +1045,35 @@ public class ArenaContractApi {
         String data = SEL_MANDATE_MINT + args;
         return sendRawTxAndWaitReceipt(web3j, ecKeyPair, nonce, gasPrice,
                 ArenaConfig.GAS_LIMIT_MANDATE_MINT, ArenaConfig.MANDATE_NFT_ADDR, data, hook);
+    }
+
+    /**
+     * 领取福泽（统收盟福／盟福，MandateRewards {@code claim(uint256,uint256[])}）。
+     *
+     * <p>入参是 {@link #callFuzeSummary} 查回的 pendingIds（待领清单）；单笔上限
+     * {@link ArenaConfig#FUZE_CLAIM_BATCH}=8 枚（对齐官网前端 BATCH），超 8 枚由调用方
+     * 拆多笔逐笔发送。calldata 手拼动态数组 ABI：selector + period + 数组偏移(0x40)
+     * + 长度 + 各 tokenId——与 {@link #doMandateMint} 同一套路，只是数组前多一个
+     * uint 入参，偏移从 0x20 变 0x40。</p>
+     *
+     * @throws Exception ids 超限/空列表，或交易 revert/超时（见 {@link RevertedTxException}）
+     */
+    public static TransactionReceipt doFuzeClaim(Web3j web3j, ECKeyPair ecKeyPair, BigInteger period,
+                                                 List<BigInteger> ids, BigInteger nonce, BigInteger gasPrice,
+                                                 PreBroadcastHook hook) throws Exception {
+        if (ids == null || ids.isEmpty()) throw new Exception("claimFuze: 无待领福泽");
+        if (ids.size() > ArenaConfig.FUZE_CLAIM_BATCH) {
+            throw new Exception("claimFuze: 单笔最多 " + ArenaConfig.FUZE_CLAIM_BATCH + " 枚，当前 " + ids.size());
+        }
+        StringBuilder args = new StringBuilder(wordHex(period));
+        args.append(wordHex(BigInteger.valueOf(64)));
+        args.append(wordHex(BigInteger.valueOf(ids.size())));
+        for (BigInteger id : ids) {
+            args.append(wordHex(id));
+        }
+        String data = SEL_FUZE_CLAIM + args;
+        return sendRawTxAndWaitReceipt(web3j, ecKeyPair, nonce, gasPrice,
+                ArenaConfig.GAS_LIMIT_CLAIM_FUZE, ArenaConfig.MANDATE_REWARDS_ADDR, data, hook);
     }
 
     // endregion

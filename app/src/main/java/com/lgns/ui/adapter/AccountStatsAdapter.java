@@ -106,6 +106,13 @@ public class AccountStatsAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
         public Integer mintableCount;
         /** 已铸盟主令枚数（ChampionMandate.balanceOf，官网「已 Mint」）：与可铸成对回填，未查到时为 null */
         public Integer mintedCount;
+        /** 福泽待领枚数（本期 rewardOf status=待领）：第三波逐地址 callFuzeSummary 回填，未查到时为 null */
+        public Integer fuzePendingCount;
+        /** 福泽待领合计（wei）：与待领枚数成对回填，口径同官网「待领 N 枚 · X fLGNS」 */
+        public BigInteger fuzePendingValue;
+        /** 第三波待领查询是否已对这行跑完：没跑完前五个胶囊统一占位，
+         *  避免初始化时「甲子已显真值、其他还是 --」的半屏混合态 */
+        public boolean tagsReady;
         /** 本轮结果还没回来（首次上屏/刷新中）：数值显示占位，状态位留空 */
         public boolean pending;
         /** 本轮查询结束但链上没返回这个地址：显示“未查到” */
@@ -311,8 +318,8 @@ public class AccountStatsAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
         TextView tvBalance, tvEntries, tvTodayChampion, tvTotalChampion, tvPrize;
         /** 师徒分成解锁提示条：今日场次不足 10 场时显示，满额/未开打时隐藏 */
         TextView tvLineageHint;
-        /** 待领小标签：甲子/擂台/师徒三个额度，外加可铸盟主令枚数，与批量领取口径一致 */
-        TextView tvTagJiazi, tvTagArena, tvTagLineage, tvTagMint;
+        /** 待领小标签：甲子/擂台/师徒三个额度，外加可铸盟主令枚数与福泽待领，与批量领取口径一致 */
+        TextView tvTagJiazi, tvTagArena, tvTagLineage, tvTagMint, tvTagFuze;
 
         AccountVH(@NonNull View itemView) {
             super(itemView);
@@ -329,6 +336,7 @@ public class AccountStatsAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
             tvTagArena = itemView.findViewById(R.id.tv_tag_arena);
             tvTagLineage = itemView.findViewById(R.id.tv_tag_lineage);
             tvTagMint = itemView.findViewById(R.id.tv_tag_mint);
+            tvTagFuze = itemView.findViewById(R.id.tv_tag_fuze);
         }
 
         void bind(AccountStatsItem item) {
@@ -355,7 +363,7 @@ public class AccountStatsAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
                 tvTotalChampion.setText(R.string.common_placeholder);
                 tvPrize.setText(R.string.common_placeholder);
                 tvLineageHint.setVisibility(View.GONE);
-                hideTags();
+                placeholderTags();
                 return;
             }
             // 视图复用：非 pending 行必须把状态位与透明度恢复出来
@@ -372,7 +380,7 @@ public class AccountStatsAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
                 tvTotalChampion.setText(R.string.common_placeholder);
                 tvPrize.setText(R.string.common_placeholder);
                 tvLineageHint.setVisibility(View.GONE);
-                hideTags();
+                placeholderTags();
                 return;
             }
 
@@ -419,38 +427,53 @@ public class AccountStatsAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
             return bd.toPlainString();
         }
 
-        /** 待领标签全隐藏（pending/unknown 行不展示半成品数值） */
-        private void hideTags() {
-            tvTagJiazi.setVisibility(View.GONE);
-            tvTagArena.setVisibility(View.GONE);
-            tvTagLineage.setVisibility(View.GONE);
-            tvTagMint.setVisibility(View.GONE);
+        /** 待领胶囊全部占位显示（pending/unknown 行不展示半成品数值，但位置先站住） */
+        private void placeholderTags() {
+            applyPlaceholder(tvTagJiazi, R.string.account_tag_jiazi_ph);
+            applyPlaceholder(tvTagArena, R.string.account_tag_arena_ph);
+            applyPlaceholder(tvTagLineage, R.string.account_tag_lineage_ph);
+            applyPlaceholder(tvTagMint, R.string.account_tag_mint_ph);
+            applyPlaceholder(tvTagFuze, R.string.account_tag_fuze_ph);
         }
 
         /**
          * 绑定甲子/擂台/师徒三个待领胶囊：
-         * <p>数值为 null 表示本轮没查到，直接隐藏该标签（不伪造 0）；查到就显示，
-         * &gt;0 用绿底一眼看出有钱可领、=0 用灰底。甲子随 playerSummary 免费带回，
-         * 擂台/师徒靠第三波逐地址查询。口径与批量领取一致。</p>
+         * <p>数值为 null 表示本轮没查到，灰底显「名称 --」占位（不伪造 0，也不让胶囊
+         * 回填后才弹出来抢位）；查到就显示，&gt;0 用绿底一眼看出有钱可领、=0 用灰底。
+         * 甲子随 playerSummary 免费带回，擂台/师徒靠第三波逐地址查询。口径与批量领取一致。</p>
          */
         private void bindTags(AccountStatsItem item) {
+            // 第三波还没跑完：五个胶囊统一占位，不先把第一波带回的甲子真值单独露出来
+            if (!item.tagsReady) {
+                placeholderTags();
+                return;
+            }
             android.content.Context ctx = itemView.getContext();
             applyTag(tvTagJiazi, item.jiaziClaimable,
-                    ctx.getString(R.string.account_tag_jiazi_fmt, formatToken(item.jiaziClaimable)));
+                    ctx.getString(R.string.account_tag_jiazi_fmt, formatToken(item.jiaziClaimable)),
+                    R.string.account_tag_jiazi_ph);
             applyTag(tvTagArena, item.arenaClaimable,
-                    ctx.getString(R.string.account_tag_arena_fmt, formatToken(item.arenaClaimable)));
+                    ctx.getString(R.string.account_tag_arena_fmt, formatToken(item.arenaClaimable)),
+                    R.string.account_tag_arena_ph);
             applyTag(tvTagLineage, item.lineagePending,
-                    ctx.getString(R.string.account_tag_lineage_fmt, formatToken(item.lineagePending)));
+                    ctx.getString(R.string.account_tag_lineage_fmt, formatToken(item.lineagePending)),
+                    R.string.account_tag_lineage_ph);
             // 盟主令两口径：可铸=领讫俸禄笔数−已铸(ChampionMandate.balanceOf)、已铸=balanceOf，按枚而非金额，走独立计数着色
             applyCountTag(tvTagMint, item.mintableCount,
                     ctx.getString(R.string.account_tag_mint_fmt,
-                            item.mintableCount, item.mintedCount == null ? 0 : item.mintedCount));
+                            item.mintableCount, item.mintedCount == null ? 0 : item.mintedCount),
+                    R.string.account_tag_mint_ph);
+            // 福泽待领：本期 status=待领 的枚数与合计（与官网 rewards 页同口径），未查到显占位不伪造 0
+            applyCountTag(tvTagFuze, item.fuzePendingCount,
+                    ctx.getString(R.string.account_tag_fuze_fmt,
+                            item.fuzePendingCount, formatToken(item.fuzePendingValue)),
+                    R.string.account_tag_fuze_ph);
         }
 
-        /** 枚数型胶囊：null→隐藏；否则显文本并按 &gt;0/0 切绿/灰底（与金额胶囊同一语义） */
-        private void applyCountTag(TextView tv, Integer count, String label) {
+        /** 枚数型胶囊：null→占位；否则显文本并按 &gt;0/0 切绿/灰底（与金额胶囊同一语义） */
+        private void applyCountTag(TextView tv, Integer count, String label, int phRes) {
             if (count == null) {
-                tv.setVisibility(View.GONE);
+                applyPlaceholder(tv, phRes);
                 return;
             }
             tv.setVisibility(View.VISIBLE);
@@ -459,16 +482,23 @@ public class AccountStatsAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
                     ? R.drawable.bg_tag_green : R.drawable.bg_tag_gray);
         }
 
-        /** 单个待领标签：null→隐藏；否则显文本并按 >0/0 切绿/灰底 */
-        private void applyTag(TextView tv, BigInteger wei, String label) {
+        /** 单个待领标签：null→占位；否则显文本并按 >0/0 切绿/灰底 */
+        private void applyTag(TextView tv, BigInteger wei, String label, int phRes) {
             if (wei == null) {
-                tv.setVisibility(View.GONE);
+                applyPlaceholder(tv, phRes);
                 return;
             }
             tv.setVisibility(View.VISIBLE);
             tv.setText(label);
             tv.setBackgroundResource(wei.signum() > 0
                     ? R.drawable.bg_tag_green : R.drawable.bg_tag_gray);
+        }
+
+        /** 胶囊占位态：灰底显「名称 --」，与真实 0 同色——没查到的不该看起来像有钱可领 */
+        private void applyPlaceholder(TextView tv, int phRes) {
+            tv.setVisibility(View.VISIBLE);
+            tv.setText(phRes);
+            tv.setBackgroundResource(R.drawable.bg_tag_gray);
         }
     }
 

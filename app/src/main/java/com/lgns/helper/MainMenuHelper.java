@@ -57,6 +57,11 @@ public class MainMenuHelper {
      * </ul>
      *
      * <p>组标题（充值管理/转账管理）不锁：它只切换子项展开，子项已经全是灰的。</p>
+     *
+     * <p>「完整流程」项也不锁，且故意不进锁列表：主界面按钮排里它已被移除，
+     * 菜单这一项是完整流程运行期唯一的停止出口（roundBoundary，打完这一圈封盘再停），
+     * 置灰等于把用户锁死在长任务里；其余任务在跑时点它只会在 Activity 入口被拦下提示，
+     * 不会误停别的任务（见 {@code MainActivity#onMenuFullWorkflowClick}）。</p>
      */
     private static final int[] LOCKED_WHILE_TASK_RUNNING = {
             R.id.menu_group_manage,
@@ -188,6 +193,12 @@ public class MainMenuHelper {
         popView.findViewById(R.id.menu_view_log).setOnClickListener(v -> {
             activity.getDialogHelper().showViewLogDialog();
             dismissPopup();
+        });
+
+        // 完整流程（原主界面按钮入口）：空闲时启动，运行中转停止出口，分流逻辑在 Activity 统一处理
+        popView.findViewById(R.id.menu_full_workflow).setOnClickListener(v -> {
+            dismissPopup();
+            activity.onMenuFullWorkflowClick();
         });
 
         popView.findViewById(R.id.menu_sys_config).setOnClickListener(v -> {

@@ -189,16 +189,21 @@
                 </LinearLayout>
             </LinearLayout>
 
-            <!-- 待领小标签行：甲子/擂台/师徒三类可领额度，外加「可铸盟主令」枚数，各一个胶囊，与批量领取口径一致。
-                 绿=有待领、灰=此刻为 0，一眼看出这个号能不能领；具体数值与显隐在适配器里回填 -->
-            <LinearLayout
+            <!-- 待领小标签：甲子/擂台/师徒/盟主令/福泽五个胶囊放同一个 ChipGroup，
+                 singleLine=false 自动换行：宽屏装得下就排一行，窄屏装不下的胶囊整颗落到下一行，
+                 不会再出现旧方案「五个挤一行→胶囊内部被压成多行折字」的问题；
+                 拆成固定两行的旧写法在宽屏上白占高度，也废弃。
+                 绿=有待领、灰=此刻为 0；具体数值与显隐仍在适配器里回填，gone 的胶囊不占位 -->
+            <com.google.android.material.chip.ChipGroup
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:layout_marginTop="6dp">
+                android:layout_marginTop="6dp"
+                app:singleLine="false"
+                app:chipSpacingVertical="6dp">
 
                 <TextView
                     android:id="@+id/tv_tag_jiazi"
+                    android:text="@string/account_tag_jiazi_ph"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginEnd="6dp"
@@ -209,11 +214,11 @@
                     android:paddingBottom="2dp"
                     android:textSize="10sp"
                     android:textStyle="bold"
-                    android:textColor="#FFFFFF"
-                    android:visibility="gone"/>
+                    android:textColor="#FFFFFF"/>
 
                 <TextView
                     android:id="@+id/tv_tag_arena"
+                    android:text="@string/account_tag_arena_ph"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginEnd="6dp"
@@ -224,11 +229,11 @@
                     android:paddingBottom="2dp"
                     android:textSize="10sp"
                     android:textStyle="bold"
-                    android:textColor="#FFFFFF"
-                    android:visibility="gone"/>
+                    android:textColor="#FFFFFF"/>
 
                 <TextView
                     android:id="@+id/tv_tag_lineage"
+                    android:text="@string/account_tag_lineage_ph"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginEnd="6dp"
@@ -239,11 +244,28 @@
                     android:paddingBottom="2dp"
                     android:textSize="10sp"
                     android:textStyle="bold"
-                    android:textColor="#FFFFFF"
-                    android:visibility="gone"/>
+                    android:textColor="#FFFFFF"/>
 
                 <TextView
                     android:id="@+id/tv_tag_mint"
+                    android:text="@string/account_tag_mint_ph"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="6dp"
+                    android:background="@drawable/bg_tag_gray"
+                    android:paddingStart="6dp"
+                    android:paddingEnd="6dp"
+                    android:paddingTop="2dp"
+                    android:paddingBottom="2dp"
+                    android:textSize="10sp"
+                    android:textStyle="bold"
+                    android:textColor="#FFFFFF"/>
+
+                <!-- 福泽待领胶囊：本期 rewardOf status=待领 的枚数与合计（与官网「待领 N 枚 · X fLGNS」同口径）；
+                     未查到显占位文案 account_tag_fuze_ph，不伪造 0 -->
+                <TextView
+                    android:id="@+id/tv_tag_fuze"
+                    android:text="@string/account_tag_fuze_ph"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:background="@drawable/bg_tag_gray"
@@ -253,9 +275,8 @@
                     android:paddingBottom="2dp"
                     android:textSize="10sp"
                     android:textStyle="bold"
-                    android:textColor="#FFFFFF"
-                    android:visibility="gone"/>
-            </LinearLayout>
+                    android:textColor="#FFFFFF"/>
+            </com.google.android.material.chip.ChipGroup>
 
             <!-- 师徒分成解锁提示：今日入场不足 10 场时出现，打满自动消失。
                  合约按 10%/场线性解锁且只认当天场次，不补打就白丢，所以单开一行说清楚 -->

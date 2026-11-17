@@ -469,6 +469,46 @@
                     android:textSize="14sp" />
             </LinearLayout>
 
+            <!-- 完整流程（原主界面按钮入口移进菜单，日志管理下方）：空闲时启动全流程；
+                 运行中不置灰，再点一次就是全流程唯一的停止出口（见 MainMenuHelper 锁列表注释） -->
+            <LinearLayout
+                android:id="@+id/menu_full_workflow"
+                android:layout_width="match_parent"
+                android:layout_height="46dp"
+                android:layout_marginStart="6dp"
+                android:layout_marginEnd="6dp"
+                android:background="@drawable/bg_pop_menu_item"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingStart="10dp"
+                android:paddingEnd="10dp">
+
+                <FrameLayout
+                    android:layout_width="30dp"
+                    android:layout_height="30dp"
+                    android:background="@drawable/bg_pop_menu_icon">
+
+                    <ImageView
+                        android:layout_width="17dp"
+                        android:layout_height="17dp"
+                        android:layout_gravity="center"
+                        android:contentDescription="@null"
+                        android:src="@drawable/ic_menu_workflow_svg"
+                        app:tint="#FF1976D2" />
+                </FrameLayout>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="12dp"
+                    android:letterSpacing="0.01"
+                    android:text="@string/common_btn_full_workflow"
+                    android:textColor="#FF1F2937"
+                    android:textSize="14sp" />
+            </LinearLayout>
+
             <LinearLayout
                 android:id="@+id/menu_championship_stats"
                 android:layout_width="match_parent"

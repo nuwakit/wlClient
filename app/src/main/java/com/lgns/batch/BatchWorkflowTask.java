@@ -15,13 +15,16 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 完整流程编排：把「充值 → 入场 → 领取 → 铸造」串成一次可中断、可续跑的批量作业。
+ * 完整流程编排：把「充值 → 入场 → 领取 → 铸造 → 统收盟福」串成一次可中断、可续跑的批量作业。
  *
  * <p>本类只做步骤调度、等待、预检与取消检查，具体动作全部委托给
- * {@link BatchFundTask}、{@link BatchEnterTask}、{@link BatchClaimTask}、{@link BatchMintTask}，
- * 自身不直接发交易，也不读写进度存储。</p>
+ * {@link BatchFundTask}、{@link BatchEnterTask}、{@link BatchClaimTask}、{@link BatchMintTask}、
+ * {@link BatchFuzeTask}，自身不直接发交易，也不读写进度存储。</p>
  *
  * <p>每一步都会检查取消标记：用户中途取消时只停止后续步骤，已完成的部分不回滚。</p>
+ *
+ * <p>流程收尾固定输出一份「步骤总览」（✓ 完成 / ✗ 中断 / — 跳过）：数据不重复统计，
+ * 行尾数字引用各子任务自己打过的汇总行，任意退出路径（正常/停止/取消/异常）都照打。</p>
  */
 public class BatchWorkflowTask {
     /** 充值阶段结束后的额外等待：只补节点同步延迟，交易本身已在上一步等过回执 */
@@ -36,7 +39,7 @@ public class BatchWorkflowTask {
     // region 工作流入口
 
     /**
-     * 完整流程：充值 → 等待入账 → 入场（按 {@link ArenaConfig#enterRounds} 圈）→ 等待结算 → 领取 → 铸造盟主令。
+     * 完整流程：充值 → 等待入账 → 入场（按 {@link ArenaConfig#enterRounds} 圈）→ 等待结算 → 领取 → 铸造盟主令 → 统收盟福。
      *
      * <p>两处等待等的是「节点间可见性」，不是交易本身：{@link BatchFundTask} 与
      * {@link BatchEnterTask} 对每笔交易都会等到回执才返回，回到这里时交易已经上链。
@@ -64,21 +67,44 @@ public class BatchWorkflowTask {
                                                char[] sessionCryptoKey) throws Exception {
         // 圈数只夹一次，后面三步（充值目标 / 预检 / 入场）全用这一个值，不再回读配置
         final int wantRounds = Math.max(1, Math.min(rounds, ArenaConfig.MAX_ENTRIES_PER_DAY));
+        final StepTracker tracker = new StepTracker(callback);
+        tracker.addStep("批量充值", "FUND");
+        tracker.addStep("批量入场", "ENTER");
+        tracker.addStep("批量领取", "CLAIM");
+        tracker.addStep("批量铸造", "MINT");
+        tracker.addStep("统收盟福", "FUZE");
+        // 之后的日志一律改走采集器：原样透传 + 顺手截各步汇总行；总览在 finally 统一打，
+        // 保证异常退出也能见到「完整流程结束 + 步骤总览」
+        callback = tracker;
+        try {
+            runSteps(ctx, callback, playMode, selectedList, sessionCryptoKey, wantRounds, tracker);
+        } finally {
+            tracker.report();
+        }
+    }
+
+    /**
+     * 完整流程步骤主体：充值 → 入场 → 领取 → 铸造 → 统收盟福。
+     *
+     * <p>与 {@link #fullArenaWorkflowResume} 拆开放：外壳只负责建采集器与 finally 总览，
+     * 步骤调度里各分支（取消、预检中止等）可以自由 return 退出，总览都由外壳兜住照打。</p>
+     */
+    private static void runSteps(Context ctx, TaskLogCallback callback, int playMode,
+                                 List<KeyListItem> selectedList, char[] sessionCryptoKey,
+                                 int wantRounds, StepTracker tracker) throws Exception {
         callback.onLog("", "FUND", "完整流程 · 第1步：批量充值");
+        tracker.begin("FUND");
         BatchFundTask.executeAutoFund(selectedList, sessionCryptoKey, callback, wantRounds);
+        tracker.finish("FUND");
 
         // 充值阶段按「停止」也要真的停：这一段没有座位与押金，停就是停。
         // 但入场不能拿着一份「一部分号有钱、一部分没钱」的名单硬打——那样这一轮必然凑不满
         // 24 座，已入座的号的押金还要等到封盘才能结算；所以跳过入场，直接进领取
         // （甲子俸与师徒分成不领就会进烧毁队列，那一段不管用户怎么停都要跑）。
         if (Web3AndroidUtil.isStopRequested()) {
-            callback.onLog("", "", "⏸ 已按要求停止：充值阶段中断，跳过入场（领取/铸造照常执行）");
+            callback.onLog("", "", "⏸ 已按要求停止：充值阶段中断，跳过入场（领取/铸造/统收盟福照常执行）");
             BatchEnterTask.enterFailedAddrSet.clear();
-            callback.onLog("", "CLAIM", "完整流程 · 第3步：批量领取");
-            BatchClaimTask.batchClaimAllResume(ctx, callback, playMode, selectedList, sessionCryptoKey);
-            callback.onLog("", "MINT", "完整流程 · 第4步：批量铸造");
-            BatchMintTask.batchMintAllResume(ctx, callback, selectedList, sessionCryptoKey);
-            callback.onLog("", "", "完整流程结束");
+            runClaimMintFuze(ctx, callback, playMode, selectedList, sessionCryptoKey, tracker);
             return;
         }
 
@@ -99,10 +125,12 @@ public class BatchWorkflowTask {
 
         if (pf.rounds > 0) {
             callback.onLog("", "ENTER", "完整流程 · 第2步：批量入场（" + pf.rounds + " 圈）");
+            tracker.begin("ENTER");
             // 已经在这里预检过并把圈数夹好了：告诉入场任务别再查一遍（白花一轮 RPC、
             // 还会在日志里重复打一条「预检通过」）
             BatchEnterTask.batchEnterAllRoundsResume(ctx, callback, playMode, pf.rounds,
                     selectedList, sessionCryptoKey, true);
+            tracker.finish("ENTER");
 
             // 按了「停止」只作用于入场：已打的圈都停在封盘之后，接着领奖反而不能省
             // （甲子俸与分成不领就会进烧毁队列）
@@ -129,17 +157,112 @@ public class BatchWorkflowTask {
             callback.onLog("", "ENTER", "跳过入场（原因见上方预检），直接进入领取");
         }
 
+        runClaimMintFuze(ctx, callback, playMode, selectedList, sessionCryptoKey, tracker);
+    }
+
+    /**
+     * 尾三步链：批量领取 → 批量铸造 → 统收盟福。
+     *
+     * <p>停止分支与主路径共用：充值中途停可以跳入场，但这三步不能砍——甲子俸/师徒分成/擂台俸
+     * 不领就进烧毁队列，铸造窗口领讫后满 60 天才开，福泽按持有盟主令期期产生，都是
+     * 「不做有损、做了无失」的动作。</p>
+     *
+     * <p>铸造紧跟领取：两者打的是不同合约（arena 主合约 vs ChampionMandate NFT），
+     * 不需等待结算——可铸清单只含领讫且满 60 天的俸禄，本轮新领的不进清单，
+     * callMintableIndices 会自己筛。统收盟福跟在铸造后：刚铸的盟主令还没进福泽期，
+     * 同样不进待领清单，无待领时 BatchFuzeTask 自行跳过不发交易。
+     * 用户在领取阶段按过停止，这里首个取消检查就自然跳出，后续步骤在总览里保持 —。</p>
+     */
+    private static void runClaimMintFuze(Context ctx, TaskLogCallback callback, int playMode,
+                                         List<KeyListItem> selectedList, char[] sessionCryptoKey,
+                                         StepTracker tracker) throws Exception {
         callback.onLog("", "CLAIM", "完整流程 · 第3步：批量领取");
+        tracker.begin("CLAIM");
         BatchClaimTask.batchClaimAllResume(ctx, callback, playMode, selectedList, sessionCryptoKey);
+        tracker.finish("CLAIM");
         BatchEnterTask.enterFailedAddrSet.clear();
 
-        // 铸造紧跟领取：两者打的是不同合约（arena 主合约 vs ChampionMandate NFT），
-        // 不需等待结算——可铸清单只含领讫且满 60 天的俸禄，本轮新领的不进清单，
-        // callMintableIndices 会自己筛；用户在领取阶段按过停止，这里首个取消检查就自然跳出
         callback.onLog("", "MINT", "完整流程 · 第4步：批量铸造");
+        tracker.begin("MINT");
         BatchMintTask.batchMintAllResume(ctx, callback, selectedList, sessionCryptoKey);
+        tracker.finish("MINT");
 
-        callback.onLog("", "", "完整流程结束");
+        callback.onLog("", "FUZE", "完整流程 · 第5步：统收盟福");
+        tracker.begin("FUZE");
+        BatchFuzeTask.batchFuzeAllResume(ctx, callback, selectedList, sessionCryptoKey);
+        tracker.finish("FUZE");
+    }
+
+    // endregion
+
+    // region 步骤总览采集器
+
+    /**
+     * 步骤进度采集器（对标大厂任务清单）：日志原样透传给宿主，同时按步记执行态，
+     * 收尾统一打一份「✓ 完成 / ✗ 中断 / — 未执行或跳过」三态总览。
+     *
+     * <p>总览不重复统计数据：各子任务末尾本就打了汇总行（如「批量领取结束 · 成功=… 失败=…」），
+     * 这里按日志 type 记住最后一条含「结束」的行，取「结束 ·」后的数字段挂到步骤行尾；
+     * 没有数字信息的行（充值）只显状态与名称。连打多圈时「最后一条」就是末圈/连打的汇总，
+     * 总览以它为准。</p>
+     *
+     * <p>✓ 不等于全部成功：成功/失败数在行上。✗ 只来自两种情况——该步执行中收到过硬取消
+     * （isCancelRequested；按圈停止不算）或执行中异常上抛。</p>
+     */
+    static final class StepTracker implements TaskLogCallback {
+        private static final String DONE = "✓";
+        private static final String FAIL = "✗";
+        private static final String SKIP = "—";
+
+        private final TaskLogCallback delegate;
+        private final List<String[]> steps = new ArrayList<String[]>();
+        private final Map<String, String> state = new HashMap<String, String>();
+        private final Map<String, String> summaries = new HashMap<String, String>();
+        /** 正在执行的步骤：中途异常上抛时 finish 来不及执行，report 里补记 ✗ */
+        private String current;
+
+        StepTracker(TaskLogCallback delegate) { this.delegate = delegate; }
+
+        /** 按执行顺序登记；初始态 —（未执行），取消中断路径下没跑的步也在总览里有行 */
+        void addStep(String title, String type) {
+            steps.add(new String[]{title, type});
+            state.put(type, SKIP);
+        }
+
+        void begin(String type) { current = type; }
+
+        /** 步骤跑完；执行期间已收到硬取消就是只跑了一半，记 ✗ */
+        void finish(String type) {
+            state.put(type, Web3AndroidUtil.isCancelRequested() ? FAIL : DONE);
+            if (type.equals(current)) current = null;
+        }
+
+        @Override
+        public void onLog(String keyNo, String type, String msg) {
+            delegate.onLog(keyNo, type, msg);
+            if (type != null && msg != null && msg.contains("结束")) summaries.put(type, msg);
+        }
+
+        /** 结束信号 + 总览：原先散在各个 return 出口的「完整流程结束」统一在这里只打一次 */
+        void report() {
+            if (current != null) state.put(current, FAIL);
+            delegate.onLog("", "", "完整流程结束");
+            delegate.onLog("", "", "完整流程步骤总览");
+            for (String[] st : steps) {
+                String detail = trimSummary(summaries.get(st[1]));
+                delegate.onLog("", "", state.get(st[1]) + " " + st[0] + (detail == null ? "" : " · " + detail));
+            }
+        }
+
+        /** 「批量领取结束 · 成功=3 …」→「成功=3 …」；「结束」后没有数字就返回 null 不挂尾 */
+        private static String trimSummary(String raw) {
+            if (raw == null) return null;
+            int cut = raw.indexOf("结束");
+            if (cut < 0) return raw;
+            String tail = raw.substring(cut + "结束".length()).trim();
+            if (tail.startsWith("·")) tail = tail.substring(1).trim();
+            return tail.isEmpty() ? null : tail;
+        }
     }
 
     // endregion

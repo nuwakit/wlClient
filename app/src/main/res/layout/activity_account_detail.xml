@@ -159,6 +159,44 @@
             </LinearLayout>
         </FrameLayout>
 
+        <!-- 盟福（单号领取福泽）：紧跟铸造按钮，与主界面「统收盟福」同一入口语义；礼盒图标见 ic_fuze_svg -->
+        <FrameLayout
+            android:id="@+id/btn_d_fuze"
+            android:layout_width="wrap_content"
+            android:layout_height="48dp"
+            android:minWidth="48dp"
+            android:layout_marginStart="4dp"
+            android:clickable="true"
+            android:focusable="true"
+            tools:ignore="UselessParent">
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="30dp"
+                android:layout_gravity="center"
+                android:orientation="horizontal"
+                android:gravity="center"
+                android:background="@drawable/bg_pill_translucent"
+                android:paddingStart="8dp"
+                android:paddingEnd="9dp">
+
+                <ImageView
+                    android:layout_width="14dp"
+                    android:layout_height="14dp"
+                    android:layout_marginEnd="3dp"
+                    android:importantForAccessibility="no"
+                    android:src="@drawable/ic_fuze_svg" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/detail_btn_fuze"
+                    android:textColor="#FFFFFF"
+                    android:textSize="11sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+        </FrameLayout>
+
         <FrameLayout
             android:id="@+id/btn_d_refresh"
             android:layout_width="48dp"
