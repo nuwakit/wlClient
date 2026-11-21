@@ -61,10 +61,13 @@ android {
         }
     }
 }
-// 3. 抹除所有常规归档任务的动态时间戳并固定文件排序
+// 3. 抹除常规归档任务（jar/aar/zip）的动态时间戳并固定文件排序。
+// 注意属性名不带 is 前缀：Groovy 访问器是 setPreserveFileTimestamps()/setReproducibleFileOrder()，
+// 写成 isXxx = false 会触发 "Could not set unknown property 'isXxx'"（JavaCompile 更是从来没有这两个属性）。
+// APK 内部的条目时间戳不靠这里：AGP 自己就固定成 1981-01-01 01:01:02（本机实测 941 个条目全部一致）。
 tasks.withType(AbstractArchiveTask).configureEach {
-    isPreserveFileTimestamps = false
-    isReproducibleFileOrder = true
+    preserveFileTimestamps = false
+    reproducibleFileOrder = true
 }
 // 构建一致性：把 javac 版本钉在仓库里，不跟随启动 Gradle 的 IDE 自带 JDK。
 // 实测（2026-11-15）：JBR 21 与 JDK 17 各自编出来的 .class 确实不同（内容哈希不一致），
