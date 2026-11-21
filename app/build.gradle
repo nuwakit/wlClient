@@ -47,6 +47,24 @@ android {
     buildFeatures {
         buildConfig = true
     }
+    // 1. 必须关闭！否则 AGP 会写入带随机数的加密依赖块，导致每次哈希必变
+    dependenciesInfo {
+        includeInApk = false
+        includeInBundle = false
+    }
+    signingConfigs {
+        create("release") {
+            // 2. 建议关闭 V1 签名，仅使用现代的 V2/V3 确定性签名（minSdk >= 24 均可）
+            enableV1Signing = false
+            enableV2Signing = true
+
+        }
+    }
+}
+// 3. 抹除所有常规归档任务的动态时间戳并固定文件排序
+tasks.withType(AbstractArchiveTask).configureEach {
+    isPreserveFileTimestamps = false
+    isReproducibleFileOrder = true
 }
 // 构建一致性：把 javac 版本钉在仓库里，不跟随启动 Gradle 的 IDE 自带 JDK。
 // 实测（2026-11-15）：JBR 21 与 JDK 17 各自编出来的 .class 确实不同（内容哈希不一致），
