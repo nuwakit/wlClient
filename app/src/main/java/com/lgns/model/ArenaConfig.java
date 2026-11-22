@@ -51,6 +51,14 @@ public class ArenaConfig {
      */
     public static final String GAS_TOKEN_ADDR = "0x83fd06F0846d9D90B3016bF670Efe2E0B11cDe14";
 
+    /**
+     * 师徒登记簿（FunLineageRegistry）合约地址，部署于 Anubis(6714)。
+     * 拜师 {@code bind(address master)} 与查询 {@code masterOf(address disciple)} 都打这个地址；
+     * 地址经 Arena.LINEAGE() 链上回读实证（selector 0x7fdffe0d → 本地址），
+     * 且 Blockscout 上该合约的入账交易方法全部为 bind，交叉验证一致。
+     */
+    public static final String LINEAGE_REGISTRY_ADDR = "0xB84B4ADf44DDa95fceA681A91Ea78dAD341DB395";
+
     /** 链 ID：签交易时写进 EIP-155，防跨链重放；pending 恢复时也用它校验是否同一条链 */
     public static final long CHAIN_ID = 6714L;
 
@@ -302,6 +310,11 @@ public class ArenaConfig {
     public static final BigInteger GAS_LIMIT_CLAIM_FUZE = BigInteger.valueOf(1_000_000);
     /** 普通 ERC20 transfer（批量转账收款方入账等场景） */
     public static final BigInteger GAS_LIMIT_ERC20_TRANSFER = BigInteger.valueOf(100000);
+    /**
+     * 拜师（FunLineageRegistry.bind(address master)）的 gas 上限：
+     * 实测链上真实 bind 交易 gasUsed = 53,134，取 150k 留近 3 倍余量。
+     */
+    public static final BigInteger GAS_LIMIT_LINEAGE_BIND = BigInteger.valueOf(150000);
     /** 补 Gas 走 GAS_TOKEN 的 transfer：实测 gasUsed ≈ 34,768，留一倍余量防 OOG */
     public static final BigInteger GAS_LIMIT_GAS_TOKEN_TRANSFER = BigInteger.valueOf(80000);
 
@@ -427,6 +440,13 @@ public class ArenaConfig {
     public static int transferMode = DEFAULT_TRANSFER_MODE;
 
     /**
+     * 自动补币开关（默认开启）：开着时操作「批量入场」，入场前先按批量充值同口径
+     * （{@link #fundTargetFor}(圈数)）检查各账号 fLGNS 门票余额，不够的自动由主号补齐后再入场。
+     * 与 AppPrefs 键 "auto_replenish_enable" 同步落盘；旧设备无此键时默认开。
+     */
+    public static boolean autoReplenishEnable = true;
+
+    /**
      * 日志自动清除（独立开关：只删除早于间隔的旧记录，保留最近数据）。
      * 默认启用 + 默认保留 1 天：日志只留最近一天，数据库不会无限膨胀。
      */
@@ -454,6 +474,7 @@ public class ArenaConfig {
         editor.putInt("play_mode_index", playModeIndex);
         editor.putInt("enter_rounds", enterRounds);
         editor.putInt("transfer_mode", transferMode);
+        editor.putBoolean("auto_replenish_enable", autoReplenishEnable);
         editor.putBoolean("log_clear_enable", logClearEnable);
         editor.putInt("log_clear_interval_value", logClearIntervalValue);
         editor.putInt("log_clear_interval_unit_index", logClearIntervalUnitIndex);
@@ -482,6 +503,8 @@ public class ArenaConfig {
         int tm = sp.getInt("transfer_mode", DEFAULT_TRANSFER_MODE);
         transferMode = (tm == TRANSFER_MODE_RATIO || tm == TRANSFER_MODE_AMOUNT)
                 ? tm : DEFAULT_TRANSFER_MODE;
+        // 自动补币: 旧设备无此键时默认开启
+        autoReplenishEnable = sp.getBoolean("auto_replenish_enable", true);
         logClearEnable = sp.getBoolean("log_clear_enable", true);
         // 存量脏配置兜底：数值非正、单位越界都回落到默认的 1 天，
         // 否则 getIntervalInMinutes() 会算出 0 或负数，清理永远等不到触发

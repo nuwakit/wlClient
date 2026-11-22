@@ -355,6 +355,39 @@
                         android:layout_marginTop="2dp"
                         android:textColor="@color/text_secondary"
                         android:textSize="11sp" />
+
+                    <!-- 自动补币开关：开则批量入场前先由主号补齐门票（ArenaConfig.autoReplenishEnable）。
+                         默认勾选：与字段默认值一致，避免配置加载前首帧显示成关闭 -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="40dp"
+                        android:layout_marginTop="4dp"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="@string/auto_clear_tv_auto_replenish_label"
+                            android:textColor="@color/text_primary"
+                            android:textSize="15sp" />
+
+                        <androidx.appcompat.widget.SwitchCompat
+                            android:id="@+id/sw_auto_replenish"
+                            style="@style/AppSwitch"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:checked="true" />
+                    </LinearLayout>
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:text="@string/auto_clear_auto_replenish_desc"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="11sp" />
                 </LinearLayout>
             </androidx.cardview.widget.CardView>
 

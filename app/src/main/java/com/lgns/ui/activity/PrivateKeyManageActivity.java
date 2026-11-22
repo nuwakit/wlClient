@@ -77,6 +77,9 @@ public class PrivateKeyManageActivity extends BaseActivity {
      */
     private volatile boolean chainDirty = false;
 
+    /** 批量启用切换重入 guard：全选/反选在后台线程逐条写库，连点会双倍写库与错乱回调 */
+    private volatile boolean bulkRunning = false;
+
     /** 分组头行：显示分组名与人数，拖动排序时不能被跨过 */
     private static final int TYPE_HEADER = 0;
     /** 私钥行：一行一个账号，长按可同组内拖动调整顺序 */
@@ -204,6 +207,10 @@ public class PrivateKeyManageActivity extends BaseActivity {
         fabAdd.setOnClickListener(v -> showAddKeyDialog());
 
         findViewById(R.id.btn_change_pwd).setOnClickListener(v -> showChangeCryptoKeyDialog());
+
+        // 全局全选/反选：作用于所有非主号；分组级入口在组头上，同一套执行链路
+        findViewById(R.id.bulk_sel_all).setOnClickListener(v -> applyBulkEnabled(null, true));
+        findViewById(R.id.bulk_invert).setOnClickListener(v -> applyBulkEnabled(null, false));
     }
 
     /** 每次回到页面都重读一次：增删密钥、改分组、改启用状态都可能在别的页面发生 */
@@ -798,6 +805,72 @@ public class PrivateKeyManageActivity extends BaseActivity {
         }).start();
     }
 
+    /**
+     * 批量启用切换（全选/反选）：groupName 为 null 时作用全部分组。
+     *
+     * <p>语义对齐行内 Switch：全选 = 把范围内账号全部启用，反选 = 逐个翻转启用态。
+     * 主号永不参与：设主号时会被自动禁用（防止主号自己下场打擂台），
+     * 批量操作把它打开等于绕过那条保护，所以整行跳过。</p>
+     *
+     * <p>逐条走 {@code setKeyEnabled} 单列 UPDATE（与行内开关同一写入口径，
+     * 不做 load+save 全量回写）；有失败不静默：收尾弹一次提示并整表重绑，
+     * 界面永远反映库里的真实状态。</p>
+     */
+    private void applyBulkEnabled(String groupName, boolean selectAll) {
+        if (bulkRunning) {
+            Toast.makeText(this, R.string.bulk_running_hint, Toast.LENGTH_SHORT).show();
+            return;
+        }
+        List<KeyStoreManager.KeyEntry> targets = new ArrayList<>();
+        for (DisplayItem d : allDisplayList) {
+            if (d.type != TYPE_KEY || d.entry == null) continue;
+            if (groupName != null && !groupName.equals(d.groupName)) continue;
+            if (d.entry.id == masterAccountId) continue;   // 主号固定禁用，不参与批量
+            targets.add(d.entry);
+        }
+        if (targets.isEmpty()) {
+            Toast.makeText(this, R.string.bulk_no_target, Toast.LENGTH_SHORT).show();
+            return;
+        }
+        bulkRunning = true;
+        new Thread(() -> {
+            int changed = 0;
+            boolean failed = false;
+            try {
+                KeyStoreManager mgr = AppGlobal.getMetaManager();
+                for (KeyStoreManager.KeyEntry e : targets) {
+                    boolean want = selectAll || !e.enabled;
+                    if (e.enabled == want) continue;
+                    try {
+                        if (mgr.setKeyEnabled(e.id, want) > 0) {
+                            e.enabled = want;
+                            changed++;
+                        } else {
+                            failed = true;
+                        }
+                    } catch (Exception ex) {
+                        Log.e("PrivateKeyManage", "bulk setKeyEnabled error", ex);
+                        failed = true;
+                    }
+                }
+            } catch (Exception ex) {
+                Log.e("PrivateKeyManage", "bulk apply error", ex);
+                failed = true;
+            }
+            final int fChanged = changed;
+            final boolean fFailed = failed;
+            runOnUiThread(() -> {
+                bulkRunning = false;
+                if (fChanged > 0) chainDirty = true;   // 启用集变了，回主界面需重拉链上
+                adapter.notifyDataSetChanged();
+                refreshSummaryCounts();
+                if (fFailed) {
+                    Toast.makeText(this, R.string.toast_enabled_save_failed, Toast.LENGTH_SHORT).show();
+                }
+            });
+        }).start();
+    }
+
     // endregion
 
     // region 加密口令
@@ -926,6 +999,11 @@ public class PrivateKeyManageActivity extends BaseActivity {
                     if (d.type == TYPE_KEY && d.groupName.equals(item.groupName)) count++;
                 }
                 h.tvGroupCount.setText(getString(R.string.common_count_fmt, count));
+                // 组级全选/反选：只作用本组（主号同样跳过），与顶栏全局按钮同一套执行链路
+                h.tvGrpSelAll.setVisibility(View.VISIBLE);
+                h.tvGrpInvert.setVisibility(View.VISIBLE);
+                h.tvGrpSelAll.setOnClickListener(v -> applyBulkEnabled(item.groupName, true));
+                h.tvGrpInvert.setOnClickListener(v -> applyBulkEnabled(item.groupName, false));
                 // 展开/折叠图标旋转
                 boolean expanded = groupExpandedMap.getOrDefault(item.groupName, false);
                 h.ivExpand.setRotation(expanded ? 90 : 0);
@@ -993,9 +1071,10 @@ public class PrivateKeyManageActivity extends BaseActivity {
         }
     }
 
-    /** 分组头 ViewHolder：颜色条 + 组名 + 人数 + 展开箭头 */
+    /** 分组头 ViewHolder：颜色条 + 组名 + 人数 + 组级全选/反选 + 展开箭头 */
     static class HeaderVH extends RecyclerView.ViewHolder {
         TextView tvGroupName, tvGroupCount;
+        TextView tvGrpSelAll, tvGrpInvert;
         View viewColor;
         ImageView ivExpand;
 
@@ -1003,6 +1082,8 @@ public class PrivateKeyManageActivity extends BaseActivity {
             super(v);
             tvGroupName = v.findViewById(R.id.tv_group_name);
             tvGroupCount = v.findViewById(R.id.tv_group_count);
+            tvGrpSelAll = v.findViewById(R.id.tv_grp_sel_all);
+            tvGrpInvert = v.findViewById(R.id.tv_grp_invert);
             viewColor = v.findViewById(R.id.view_color);
             ivExpand = v.findViewById(R.id.iv_expand);
         }

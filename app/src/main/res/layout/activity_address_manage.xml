@@ -34,6 +34,35 @@
             android:textSize="18sp"
             android:textStyle="bold" />
 
+        <!-- 全局全选/反选：作用于所有接收方的启用开关（分组级入口在组头上）；
+             启用受 100% 比例上限约束，触顶时弹 toast 提示并停在中途 -->
+        <TextView
+            android:id="@+id/bulk_sel_all"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:paddingStart="8dp"
+            android:paddingTop="6dp"
+            android:paddingEnd="8dp"
+            android:paddingBottom="6dp"
+            android:text="@string/bulk_sel_all"
+            android:textColor="@color/white"
+            android:textSize="13sp" />
+
+        <TextView
+            android:id="@+id/bulk_invert"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="4dp"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:paddingStart="8dp"
+            android:paddingTop="6dp"
+            android:paddingEnd="8dp"
+            android:paddingBottom="6dp"
+            android:text="@string/bulk_invert"
+            android:textColor="@color/white"
+            android:textSize="13sp" />
+
         <!-- 右上角：新增时的默认值入口（比例与数额在同一个弹窗里改） -->
         <ImageButton
             android:id="@+id/btn_ratio_default"

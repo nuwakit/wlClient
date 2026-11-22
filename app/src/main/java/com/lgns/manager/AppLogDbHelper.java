@@ -40,7 +40,7 @@ public class AppLogDbHelper extends SQLiteOpenHelper {
     /** 库文件名 */
     private static final String DB_NAME = "app_log.db";
     /** 库版本：改表结构必须 +1，并在 onUpgrade 里补对应段落 */
-    private static final int DB_VERSION = 10;
+    private static final int DB_VERSION = 12;
     /** 进程内单例 */
     private static AppLogDbHelper instance;
 
@@ -177,6 +177,87 @@ public class AppLogDbHelper extends SQLiteOpenHelper {
     /** 支付方：创建时间（v9 由 created 改名而来） */
     public static final String COL_PAY_CREATED = "created_at";
 
+    /**
+     * 归集支付方表：批量归集的出资方来源。
+     *
+     * <p>不复制密文，只存 key_entry 的 _id（key_id）做引用：私钥密文与密码仍由私钥管理独占一份，
+     * 避免同一把私钥出现两套密文两种密码。删除私钥后该引用行在归集页照常展示，
+     * 执行时才发现私钥缺失并逐条报错，不会静默漏转。</p>
+     */
+    public static final String TABLE_COLLECT_PAYER = "collect_payer_entry";
+    /** 归集支付方：引用的私钥 id（key_entry._id） */
+    public static final String COL_CP_KEY_ID = "key_id";
+    /** 归集支付方：编号 */
+    public static final String COL_CP_CUSTOM_CODE = "custom_code";
+    /** 归集支付方：分组名 */
+    public static final String COL_CP_GROUP_NO = "group_no";
+    /** 归集支付方：出资地址（导入时从私钥记录快照过来） */
+    public static final String COL_CP_ADDRESS = "address";
+    /** 归集支付方：是否参与批量归集 */
+    public static final String COL_CP_ENABLED = "enabled";
+    /** 归集支付方：排序值 */
+    public static final String COL_CP_SORT_ORDER = "sort_order";
+    /** 归集支付方：创建时间 */
+    public static final String COL_CP_CREATED = "created_at";
+
+    /**
+     * 归集接收方表：批量归集的唯一收款方（主接收方）候选。
+     * 列结构对齐 address_entry，但没有比例与数额——归集是「超出阈值全转」，不参与分配。
+     */
+    public static final String TABLE_COLLECT_ADDRESS = "collect_address_entry";
+    /** 归集接收方：编号 */
+    public static final String COL_CA_CUSTOM_CODE = "custom_code";
+    /** 归集接收方：分组名 */
+    public static final String COL_CA_GROUP_NO = "group_no";
+    /** 归集接收方：收款地址（唯一业务键，NOT NULL） */
+    public static final String COL_CA_ADDRESS = "address";
+    /** 归集接收方：是否启用 */
+    public static final String COL_CA_ENABLED = "enabled";
+    /** 归集接收方：排序值 */
+    public static final String COL_CA_SORT_ORDER = "sort_order";
+    /** 归集接收方：创建时间 */
+    public static final String COL_CA_CREATED = "created";
+
+    /**
+     * 门徒表：批量拜师的对象来源。
+     *
+     * <p>列结构与归集支付方表(collect_payer_entry)完全同构：同样只存 key_entry._id 引用
+     * 不复制密文，拜师交易要用门徒自己的私钥签名，执行时现解密。</p>
+     */
+    public static final String TABLE_APPRENTICE = "apprentice_entry";
+    /** 门徒：引用的私钥 id（key_entry._id） */
+    public static final String COL_AP_KEY_ID = "key_id";
+    /** 门徒：编号 */
+    public static final String COL_AP_CUSTOM_CODE = "custom_code";
+    /** 门徒：分组名 */
+    public static final String COL_AP_GROUP_NO = "group_no";
+    /** 门徒：徒弟地址（导入时从私钥记录快照过来） */
+    public static final String COL_AP_ADDRESS = "address";
+    /** 门徒：是否参与批量拜师 */
+    public static final String COL_AP_ENABLED = "enabled";
+    /** 门徒：排序值 */
+    public static final String COL_AP_SORT_ORDER = "sort_order";
+    /** 门徒：创建时间 */
+    public static final String COL_AP_CREATED = "created_at";
+
+    /**
+     * 师傅表：批量拜师的目标师傅（主师傅）候选。
+     * 列结构对齐归集接收方表(collect_address_entry)，师傅是收徒方、不需要自己的私钥引用。
+     */
+    public static final String TABLE_MASTER = "master_entry";
+    /** 师傅：编号 */
+    public static final String COL_MST_CUSTOM_CODE = "custom_code";
+    /** 师傅：分组名 */
+    public static final String COL_MST_GROUP_NO = "group_no";
+    /** 师傅：收徒地址（唯一业务键，NOT NULL） */
+    public static final String COL_MST_ADDRESS = "address";
+    /** 师傅：是否启用 */
+    public static final String COL_MST_ENABLED = "enabled";
+    /** 师傅：排序值 */
+    public static final String COL_MST_SORT_ORDER = "sort_order";
+    /** 师傅：创建时间 */
+    public static final String COL_MST_CREATED = "created";
+
     // endregion
 
     // region 单例与建表/升级
@@ -213,6 +294,52 @@ public class AppLogDbHelper extends SQLiteOpenHelper {
 
     /** 支付方建表语句（固定用于正式表名） */
     private static final String SQL_CREATE_PAYER = payerDdl(TABLE_PAYER);
+
+    /** 归集支付方建表语句：onCreate 与 onUpgrade 共用，避免两处 DDL 漂移 */
+    private static final String SQL_CREATE_COLLECT_PAYER =
+            "CREATE TABLE IF NOT EXISTS " + TABLE_COLLECT_PAYER + "(" +
+                    COL_ID + " INTEGER PRIMARY KEY AUTOINCREMENT," +
+                    COL_CP_KEY_ID + " INTEGER NOT NULL," +
+                    COL_CP_CUSTOM_CODE + " TEXT DEFAULT ''," +
+                    COL_CP_GROUP_NO + " TEXT DEFAULT ''," +
+                    COL_CP_ADDRESS + " TEXT," +
+                    COL_CP_ENABLED + " INTEGER DEFAULT 1," +
+                    COL_CP_SORT_ORDER + " INTEGER DEFAULT 0," +
+                    COL_CP_CREATED + " INTEGER);";
+
+    /** 归集接收方建表语句：同上，onCreate 与 onUpgrade 共用 */
+    private static final String SQL_CREATE_COLLECT_ADDRESS =
+            "CREATE TABLE IF NOT EXISTS " + TABLE_COLLECT_ADDRESS + "(" +
+                    COL_ID + " INTEGER PRIMARY KEY AUTOINCREMENT," +
+                    COL_CA_CUSTOM_CODE + " TEXT DEFAULT ''," +
+                    COL_CA_GROUP_NO + " TEXT DEFAULT ''," +
+                    COL_CA_ADDRESS + " TEXT NOT NULL," +
+                    COL_CA_ENABLED + " INTEGER DEFAULT 1," +
+                    COL_CA_SORT_ORDER + " INTEGER DEFAULT 0," +
+                    COL_CA_CREATED + " INTEGER);";
+
+    /** 门徒建表语句：列结构同归集支付方，onCreate 与 onUpgrade 共用 */
+    private static final String SQL_CREATE_APPRENTICE =
+            "CREATE TABLE IF NOT EXISTS " + TABLE_APPRENTICE + "(" +
+                    COL_ID + " INTEGER PRIMARY KEY AUTOINCREMENT," +
+                    COL_AP_KEY_ID + " INTEGER NOT NULL," +
+                    COL_AP_CUSTOM_CODE + " TEXT DEFAULT ''," +
+                    COL_AP_GROUP_NO + " TEXT DEFAULT ''," +
+                    COL_AP_ADDRESS + " TEXT," +
+                    COL_AP_ENABLED + " INTEGER DEFAULT 1," +
+                    COL_AP_SORT_ORDER + " INTEGER DEFAULT 0," +
+                    COL_AP_CREATED + " INTEGER);";
+
+    /** 师傅建表语句：列结构同归集接收方，同上共用 */
+    private static final String SQL_CREATE_MASTER =
+            "CREATE TABLE IF NOT EXISTS " + TABLE_MASTER + "(" +
+                    COL_ID + " INTEGER PRIMARY KEY AUTOINCREMENT," +
+                    COL_MST_CUSTOM_CODE + " TEXT DEFAULT ''," +
+                    COL_MST_GROUP_NO + " TEXT DEFAULT ''," +
+                    COL_MST_ADDRESS + " TEXT NOT NULL," +
+                    COL_MST_ENABLED + " INTEGER DEFAULT 1," +
+                    COL_MST_SORT_ORDER + " INTEGER DEFAULT 0," +
+                    COL_MST_CREATED + " INTEGER);";
 
     /** 私有构造：开 WAL 提升读写并发（后台写日志时不阻塞列表查询） */
     private AppLogDbHelper(Context context) {
@@ -285,6 +412,10 @@ public class AppLogDbHelper extends SQLiteOpenHelper {
                 COL_KM_VALUE + " TEXT);");
         db.execSQL(SQL_CREATE_ADDRESS);
         db.execSQL(SQL_CREATE_PAYER);
+        db.execSQL(SQL_CREATE_COLLECT_PAYER);
+        db.execSQL(SQL_CREATE_COLLECT_ADDRESS);
+        db.execSQL(SQL_CREATE_APPRENTICE);
+        db.execSQL(SQL_CREATE_MASTER);
     }
 
     /**
@@ -293,7 +424,8 @@ public class AppLogDbHelper extends SQLiteOpenHelper {
      *
      * <p>版本台账：2 重建日志表 / 3 新增分组表 / 4 新增当日状态与失败日志 /
      * 5 加 is_failed / 6 新增私钥表与元数据 / 7 给两张表加 group_no /
-     * 8 新增地址簿与支付方 / 9 支付方表列名对齐 / 10 地址簿加 amount 收益数额。</p>
+     * 8 新增地址簿与支付方 / 9 支付方表列名对齐 / 10 地址簿加 amount 收益数额 /
+     * 11 新增归集支付方与归集接收方 / 12 新增门徒与师傅表。</p>
      */
     @Override
     public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
@@ -370,6 +502,16 @@ public class AppLogDbHelper extends SQLiteOpenHelper {
         if (oldVersion < 10) {
             // 地址簿加「收益数额」列：按数额转账模式的分配依据，存量行默认 0（等于不参与）
             try { db.execSQL("ALTER TABLE " + TABLE_ADDRESS + " ADD COLUMN " + COL_AD_AMOUNT + " TEXT DEFAULT '0.00'"); } catch (Exception ignored) {}
+        }
+        if (oldVersion < 11) {
+            // 归集管理两张新表（只建表，不动任何存量数据；IF NOT EXISTS 保证幂等）
+            db.execSQL(SQL_CREATE_COLLECT_PAYER);
+            db.execSQL(SQL_CREATE_COLLECT_ADDRESS);
+        }
+        if (oldVersion < 12) {
+            // 拜师管理两张新表（同上，只建表不动存量）
+            db.execSQL(SQL_CREATE_APPRENTICE);
+            db.execSQL(SQL_CREATE_MASTER);
         }
     }
 

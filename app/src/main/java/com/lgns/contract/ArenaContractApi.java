@@ -1135,6 +1135,56 @@ public class ArenaContractApi {
 
     // endregion
 
+    // region 师徒登记簿（FunLineageRegistry，拜师专用）
+    //
+    // 与 arena 主合约是两个地址：拜师与查师傅都打 LINEAGE_REGISTRY_ADDR（Arena.LINEAGE() 链上回读实证）。
+    // 接口来源 ILineageRegistry.sol：masterOf 未绑定时返零地址；bind 一次性绑定、改绑必 revert，
+    // 所以调用方发 bind 前必须先 callMasterOf 预检，避免白烧手续费。
+
+    /**
+     * 查某门徒当前已拜的师傅（{@code masterOf(address disciple)}）。
+     *
+     * <p>返回约定：未拜师（链上报零地址）返空串 {@code ""}，已拜师返师傅地址；
+     * 调用方据此区分「未拜师 / 已拜本师 / 已拜他人」三分支。</p>
+     *
+     * @throws Exception RPC 报错或返回体畸形；查不到不能当「未拜师」，否则可能误发 bind
+     */
+    public static String callMasterOf(Web3j web3j, String disciple) throws Exception {
+        List<Type> inputs = new ArrayList<Type>();
+        inputs.add(new Address(disciple));
+        List<TypeReference<?>> outputs = new ArrayList<TypeReference<?>>();
+        outputs.add(TypeReference.create(Address.class));
+        Function func = new Function("masterOf", inputs, outputs);
+        String data = FunctionEncoder.encode(func);
+        EthCall res = web3j.ethCall(
+                Transaction.createEthCallTransaction(null, ArenaConfig.LINEAGE_REGISTRY_ADDR, data),
+                DefaultBlockParameterName.LATEST
+        ).send();
+        if (res.hasError()) throw new Exception("masterOf error:" + res.getError().getMessage());
+        String word = Numeric.cleanHexPrefix(res.getValue() == null ? "" : res.getValue());
+        if (word.length() < 64) throw new Exception("masterOf: 返回体畸形(" + res.getValue() + ")");
+        String addr = "0x" + word.substring(word.length() - 40);
+        // 零地址 = 未绑定，统一折算成空串给调用方
+        if ("0000000000000000000000000000000000000000".equals(addr.substring(2))) return "";
+        return addr;
+    }
+
+    /**
+     * 拜师（{@code bind(address master)}）：用门徒自己的密钥签名，打到登记簿合约。
+     *
+     * <p>无返回值：结果只靠是否抛异常判断；gas 上限取 {@link ArenaConfig#GAS_LIMIT_LINEAGE_BIND}。</p>
+     */
+    public static void doLineageBind(Web3j web3j, ECKeyPair ecKeyPair, String masterAddr,
+                                     BigInteger nonce, BigInteger gasPrice) throws Exception {
+        List<Type> inputs = Arrays.<Type>asList(new Address(masterAddr));
+        Function func = new Function("bind", inputs, new ArrayList<TypeReference<?>>());
+        String data = FunctionEncoder.encode(func);
+        sendRawTxAndWaitReceipt(web3j, ecKeyPair, nonce, gasPrice,
+                ArenaConfig.GAS_LIMIT_LINEAGE_BIND, ArenaConfig.LINEAGE_REGISTRY_ADDR, data);
+    }
+
+    // endregion
+
     // region 手续费（Gas）查询与转账
     //
     // 本链的 Gas 币是一枚 ERC20（ArenaConfig.GAS_TOKEN_ADDR），eth_getBalance 与它的

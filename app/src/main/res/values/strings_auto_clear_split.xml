@@ -23,5 +23,9 @@
     <string name="auto_clear_transfer_mode_desc_ratio">把支付方余额当 100%，按各收款方的收益比例拆开转完</string>
     <string name="auto_clear_transfer_mode_desc_amount">每号固定转收款方的收益数额（fLGNS），累计数额不能大于支付方余额</string>
 
+    <!-- 自动补币开关（对应 ArenaConfig.autoReplenishEnable）：接在批量转账卡片下面 -->
+    <string name="auto_clear_tv_auto_replenish_label">自动补币</string>
+    <string name="auto_clear_auto_replenish_desc">批量入场前，自动把 fLGNS 不够本次门票的号从主号补齐（与批量充值同口径：连打 1 场补到 100 fLGNS）</string>
+
     <string name="auto_clear_desc_note_v2">说明：&#10;• 私钥：到达设定时长后，打开 APP 时立即清空全部私钥，需重新添加才能使用&#10;• 日志：默认已启用并保留最近 1 天，到达设定时长后仅删除早于该时长的旧日志&#10;• 受系统省电与后台限制，清理可能延迟，重新打开 APP 会立即校验&#10;• 建议私钥间隔设置 15 分钟以上，日志间隔按需设置</string>
 </resources>

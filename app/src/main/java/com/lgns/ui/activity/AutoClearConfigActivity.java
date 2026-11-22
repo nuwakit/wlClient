@@ -57,6 +57,8 @@ public class AutoClearConfigActivity extends BaseActivity {
     private Spinner spTransferMode;
     /** 当前转账方式的一句话说明，随下拉选择实时切换 */
     private TextView tvTransferModeDesc;
+    /** 自动补币开关：开启时批量入场前先由主号补齐门票（ArenaConfig.autoReplenishEnable） */
+    private SwitchCompat swAutoReplenish;
     /** 日志自动清除开关（关闭时停掉后台清理调度） */
     private SwitchCompat swLogClearEnable;
     /** 日志保留时长数值，与 spLogTimeUnit 组成「N 小时/天」 */
@@ -167,6 +169,7 @@ public class AutoClearConfigActivity extends BaseActivity {
         spEnterRounds = findViewById(R.id.sp_enter_rounds);
         spTransferMode = findViewById(R.id.sp_transfer_mode);
         tvTransferModeDesc = findViewById(R.id.tv_transfer_mode_desc);
+        swAutoReplenish = findViewById(R.id.sw_auto_replenish);
         swLogClearEnable = findViewById(R.id.sw_log_clear_enable);
         etLogClearVal = findViewById(R.id.et_log_clear_val);
         spLogTimeUnit = findViewById(R.id.sp_log_time_unit);
@@ -259,6 +262,8 @@ public class AutoClearConfigActivity extends BaseActivity {
             spTransferMode.setSelection(tMode);
             applyTransferModeDesc(tMode);
 
+            swAutoReplenish.setChecked(ArenaConfig.autoReplenishEnable);
+
             etLogClearVal.setText(String.valueOf(ArenaConfig.logClearIntervalValue));
 
             int logTimeUnitIndex = ArenaConfig.logClearIntervalUnitIndex;
@@ -290,6 +295,7 @@ public class AutoClearConfigActivity extends BaseActivity {
                     Math.max(0, spTransferMode.getCount() - 1));
             spTransferMode.setSelection(fallbackMode);
             applyTransferModeDesc(fallbackMode);
+            swAutoReplenish.setChecked(true);
             swLogClearEnable.setChecked(true);
             etLogClearVal.setText("1");
             spLogTimeUnit.setSelection(2);
@@ -339,6 +345,7 @@ public class AutoClearConfigActivity extends BaseActivity {
             ArenaConfig.playModeIndex = spPlayMode.getSelectedItemPosition();
             ArenaConfig.enterRounds = spEnterRounds.getSelectedItemPosition() + 1;
             ArenaConfig.transferMode = spTransferMode.getSelectedItemPosition();
+            ArenaConfig.autoReplenishEnable = swAutoReplenish.isChecked();
             ArenaConfig.logClearEnable = swLogClearEnable.isChecked();
             ArenaConfig.logClearIntervalValue = logIntervalValue;
             ArenaConfig.logClearIntervalUnitIndex = spLogTimeUnit.getSelectedItemPosition();
@@ -352,6 +359,7 @@ public class AutoClearConfigActivity extends BaseActivity {
                     "入场模式=" + getPlayModeText(ArenaConfig.playModeIndex) + ", " +
                     "连打场数=" + ArenaConfig.enterRounds + " 场, " +
                     "批量转账=" + getTransferModeText(ArenaConfig.transferMode) + ", " +
+                    "自动补币=" + (ArenaConfig.autoReplenishEnable ? "开启" : "关闭") + ", " +
                     "日志自动清除=" + (ArenaConfig.logClearEnable ? "开启" : "关闭") + ", " +
                     "日志保留=" + ArenaConfig.logClearIntervalValue + " " + getTimeUnitText(ArenaConfig.logClearIntervalUnitIndex);
             AppLogDbHelper dbHelper = AppLogDbHelper.getInstance(this);

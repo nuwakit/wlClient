@@ -91,6 +91,36 @@
             android:label="批量转账" />
 
         <activity
+            android:name=".ui.activity.CollectPayerManageActivity"
+            android:exported="false"
+            android:label="@string/title_collect_payer_manage" />
+
+        <activity
+            android:name=".ui.activity.CollectAddressManageActivity"
+            android:exported="false"
+            android:label="@string/title_collect_address_manage" />
+
+        <activity
+            android:name=".ui.activity.BatchCollectActivity"
+            android:exported="false"
+            android:label="@string/title_batch_collect" />
+
+        <activity
+            android:name=".ui.activity.DiscipleManageActivity"
+            android:exported="false"
+            android:label="@string/title_disciple_manage" />
+
+        <activity
+            android:name=".ui.activity.MasterManageActivity"
+            android:exported="false"
+            android:label="@string/title_master_manage" />
+
+        <activity
+            android:name=".ui.activity.BatchApprenticeActivity"
+            android:exported="false"
+            android:label="@string/title_batch_apprentice" />
+
+        <activity
             android:name=".ui.activity.TransferListActivity"
             android:exported="false"
             android:label="@string/txn_title_list" />

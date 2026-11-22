@@ -474,6 +474,18 @@ public class MainActivity extends BaseActivity implements TaskLogCallback, Batch
             beginTask(tbEnter);
             new Thread(() -> {
                 try {
+                    // 自动补币（系统配置开关，默认开）：入场前先按批量充值同口径检查各号门票，
+                    // 不够的由主号补齐。补完后固定等 5 秒再入场：多节点间区块同步有延迟，
+                    // 立刻让入场预检读余额会拿到补币前的旧值（与完整流程 WAIT_AFTER_FUND_MS 同一口径）
+                    if (ArenaConfig.autoReplenishEnable) {
+                        appendLog("", "FUND", "自动补币已开启：入场前先检查各账号门票余额，不足则由主号补齐");
+                        BatchFundTask.executeAutoFund(enabledList, pwdCharArray, this, rounds);
+                        try {
+                            Thread.sleep(5000L);
+                        } catch (InterruptedException ignore) {
+                            Thread.currentThread().interrupt();
+                        }
+                    }
                     BatchEnterTask.batchEnterAllRoundsResume(getApplicationContext(), this, currentPlayMode,
                             rounds, enabledList, pwdCharArray);
                 } catch (Exception e) {

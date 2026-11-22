@@ -50,6 +50,9 @@ public class PayerAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
 
         /** 点击分组头折叠 / 展开 */
         void onToggleGroup(String groupName);
+
+        /** 组级全选 / 反选（selectAll=true 全选，false 反选），落库由页面负责 */
+        void onGroupBatch(String groupName, boolean selectAll);
     }
 
     // endregion
@@ -106,6 +109,8 @@ public class PayerAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
     private final Listener listener;
     /** 当前出资方（主号）的 id；为 -1 表示未设置，此时没有任何一行会高亮 */
     private long masterId = -1;
+    /** 主号行的胶囊文案：转账页是「出资方」，归集接收方页改成「主接收方」 */
+    private String masterPillText;
 
     // endregion
 
@@ -127,6 +132,11 @@ public class PayerAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
     /** 出资支付方（主号）变更后由页面回填，用于高亮整卡与「出资方」胶囊 */
     public void setMasterId(long masterId) {
         this.masterId = masterId;
+    }
+
+    /** 主号胶囊文案：传 null 回落到默认的「出资方」（转账语义），归集页传「主接收方」 */
+    public void setMasterPillText(String text) {
+        this.masterPillText = text;
     }
 
     // endregion
@@ -166,6 +176,11 @@ public class PayerAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
                 if (r.type == Row.TYPE_ITEM && r.groupName.equals(row.groupName)) count++;
             }
             h.tvGroupCount.setText(h.itemView.getContext().getString(R.string.common_count_fmt, count));
+            // 组级全选/反选：与顶栏全局按钮同一套执行链路，只是范围收窄到本组
+            h.tvGrpSelAll.setVisibility(View.VISIBLE);
+            h.tvGrpInvert.setVisibility(View.VISIBLE);
+            h.tvGrpSelAll.setOnClickListener(v -> listener.onGroupBatch(row.groupName, true));
+            h.tvGrpInvert.setOnClickListener(v -> listener.onGroupBatch(row.groupName, false));
             boolean open = expanded.getOrDefault(row.groupName, false);
             h.ivExpand.setRotation(open ? 90 : 0);
             h.itemView.setOnClickListener(v -> listener.onToggleGroup(row.groupName));
@@ -188,7 +203,8 @@ public class PayerAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
             h.cardView.setCardBackgroundColor(0xFFFFF8F0);
             h.cardView.setStrokeColor(0xFFFFE0B2);
             h.tvGroupTag.setVisibility(View.VISIBLE);
-            h.tvGroupTag.setText(R.string.payer_master_pill);
+            h.tvGroupTag.setText(masterPillText != null
+                    ? masterPillText : h.itemView.getContext().getString(R.string.payer_master_pill));
             h.tvGroupTag.setTextColor(0xFFE65100);
             h.tvGroupTag.setBackgroundTintList(ColorStateList.valueOf(0xFFFFF3E0));
         } else {
@@ -240,9 +256,10 @@ public class PayerAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
 
     // region ViewHolder
 
-    /** 分组头 ViewHolder：组名 + 人数 + 左侧颜色条 + 展开箭头 */
+    /** 分组头 ViewHolder：组名 + 人数 + 组级全选/反选 + 左侧颜色条 + 展开箭头 */
     static class HeaderVH extends RecyclerView.ViewHolder {
         final TextView tvGroupName, tvGroupCount;
+        final TextView tvGrpSelAll, tvGrpInvert;
         final View viewColor;
         final ImageView ivExpand;
 
@@ -250,6 +267,8 @@ public class PayerAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
             super(v);
             tvGroupName = v.findViewById(R.id.tv_group_name);
             tvGroupCount = v.findViewById(R.id.tv_group_count);
+            tvGrpSelAll = v.findViewById(R.id.tv_grp_sel_all);
+            tvGrpInvert = v.findViewById(R.id.tv_grp_invert);
             viewColor = v.findViewById(R.id.view_color);
             ivExpand = v.findViewById(R.id.iv_expand);
         }

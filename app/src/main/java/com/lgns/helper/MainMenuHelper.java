@@ -13,10 +13,16 @@ import android.widget.PopupWindow;
 
 import com.lgns.R;
 import com.lgns.ui.activity.AddressManageActivity;
+import com.lgns.ui.activity.BatchApprenticeActivity;
+import com.lgns.ui.activity.BatchCollectActivity;
 import com.lgns.ui.activity.BatchGasFundActivity;
 import com.lgns.ui.activity.BatchTransferActivity;
+import com.lgns.ui.activity.CollectAddressManageActivity;
+import com.lgns.ui.activity.CollectPayerManageActivity;
+import com.lgns.ui.activity.DiscipleManageActivity;
 import com.lgns.ui.activity.GroupManageActivity;
 import com.lgns.ui.activity.MainActivity;
+import com.lgns.ui.activity.MasterManageActivity;
 import com.lgns.ui.activity.PayerManageActivity;
 import com.lgns.ui.activity.PrivateKeyManageActivity;
 
@@ -24,9 +30,9 @@ import com.lgns.ui.activity.PrivateKeyManageActivity;
  * 主界面溢出菜单（⋮）下拉面板：一级项直接跳页，充值/转账两个分组可展开，
  * 其余工具项（看日志/系统配置/结算统计/迁移地址）以弹窗形式打开。
  *
- * <p>为什么要两个分组互斥展开：菜单本身是 WRAP_CONTENT 的 PopupWindow，
+ * <p>为什么要四个分组互斥展开：菜单本身是 WRAP_CONTENT 的 PopupWindow，
  * 两个分组同时展开会把窗口顶出屏幕（小屏下下面的项直接点不到），
- * 所以展开一个就强制收起另一个。</p>
+ * 所以展开一个就强制收起其余全部。</p>
  *
  * <p>尺寸约定：窗口宽度固定为卡片宽 212dp 加两侧各 14dp 投影边距，
  * 这个数值必须与 {@code layout_pop_menu.xml} 里的卡片尺寸同步修改，否则阴影会被裁掉。</p>
@@ -71,6 +77,12 @@ public class MainMenuHelper {
             R.id.menu_payer_manage,
             R.id.menu_address_manage,
             R.id.menu_batch_transfer,
+            R.id.menu_collect_payer_manage,
+            R.id.menu_collect_address_manage,
+            R.id.menu_batch_collect,
+            R.id.menu_disciple_manage,
+            R.id.menu_master_manage,
+            R.id.menu_batch_apprentice,
             R.id.menu_sys_config,
     };
 
@@ -131,27 +143,63 @@ public class MainMenuHelper {
             dismissPopup();
         });
 
-        // ---- 两个可展开分组：同时只展开一个，避免菜单顶到屏幕外 ----
+        // ---- 四个可展开分组：同时只展开一个，避免菜单顶到屏幕外 ----
         final View rechargeChildren = popView.findViewById(R.id.menu_recharge_children);
         final ImageView rechargeArrow = popView.findViewById(R.id.iv_recharge_arrow);
         final View transferChildren = popView.findViewById(R.id.menu_transfer_children);
         final ImageView transferArrow = popView.findViewById(R.id.iv_transfer_arrow);
+        final View collectChildren = popView.findViewById(R.id.menu_collect_children);
+        final ImageView collectArrow = popView.findViewById(R.id.iv_collect_arrow);
+        final View apprenticeChildren = popView.findViewById(R.id.menu_apprentice_children);
+        final ImageView apprenticeArrow = popView.findViewById(R.id.iv_apprentice_arrow);
 
         // 折叠态箭头朝右(-90°)，展开态朝下
         rechargeArrow.setRotation(-90f);
         transferArrow.setRotation(-90f);
+        collectArrow.setRotation(-90f);
+        apprenticeArrow.setRotation(-90f);
 
         popView.findViewById(R.id.menu_recharge_group).setOnClickListener(v -> {
             boolean expand = rechargeChildren.getVisibility() != View.VISIBLE;
             setExpanded(rechargeChildren, rechargeArrow, expand);
-            if (expand) setExpanded(transferChildren, transferArrow, false);
+            if (expand) {
+                setExpanded(transferChildren, transferArrow, false);
+                setExpanded(collectChildren, collectArrow, false);
+                setExpanded(apprenticeChildren, apprenticeArrow, false);
+            }
             resizePopup();
         });
 
         popView.findViewById(R.id.menu_transfer_group).setOnClickListener(v -> {
             boolean expand = transferChildren.getVisibility() != View.VISIBLE;
             setExpanded(transferChildren, transferArrow, expand);
-            if (expand) setExpanded(rechargeChildren, rechargeArrow, false);
+            if (expand) {
+                setExpanded(rechargeChildren, rechargeArrow, false);
+                setExpanded(collectChildren, collectArrow, false);
+                setExpanded(apprenticeChildren, apprenticeArrow, false);
+            }
+            resizePopup();
+        });
+
+        popView.findViewById(R.id.menu_collect_group).setOnClickListener(v -> {
+            boolean expand = collectChildren.getVisibility() != View.VISIBLE;
+            setExpanded(collectChildren, collectArrow, expand);
+            if (expand) {
+                setExpanded(rechargeChildren, rechargeArrow, false);
+                setExpanded(transferChildren, transferArrow, false);
+                setExpanded(apprenticeChildren, apprenticeArrow, false);
+            }
+            resizePopup();
+        });
+
+        popView.findViewById(R.id.menu_apprentice_group).setOnClickListener(v -> {
+            boolean expand = apprenticeChildren.getVisibility() != View.VISIBLE;
+            setExpanded(apprenticeChildren, apprenticeArrow, expand);
+            if (expand) {
+                setExpanded(rechargeChildren, rechargeArrow, false);
+                setExpanded(transferChildren, transferArrow, false);
+                setExpanded(collectChildren, collectArrow, false);
+            }
             resizePopup();
         });
 
@@ -186,6 +234,48 @@ public class MainMenuHelper {
         popView.findViewById(R.id.menu_batch_transfer).setOnClickListener(v -> {
             activity.setRefreshLocalOnlyOnResume();
             activity.startActivity(new Intent(activity, BatchTransferActivity.class));
+            dismissPopup();
+        });
+
+        // ---- 归集管理子项：与转账同构的多对一方向，名单都是独立账本 ----
+        popView.findViewById(R.id.menu_collect_payer_manage).setOnClickListener(v -> {
+            // 归集支付方只存私钥引用，不动主界面账号集合与其链上值 → 只重建本地展示
+            activity.setRefreshGroupOnlyOnResume();
+            activity.startActivity(new Intent(activity, CollectPayerManageActivity.class));
+            dismissPopup();
+        });
+
+        popView.findViewById(R.id.menu_collect_address_manage).setOnClickListener(v -> {
+            // 归集接收方是独立名单，同理只重建本地展示
+            activity.setRefreshGroupOnlyOnResume();
+            activity.startActivity(new Intent(activity, CollectAddressManageActivity.class));
+            dismissPopup();
+        });
+
+        popView.findViewById(R.id.menu_batch_collect).setOnClickListener(v -> {
+            activity.setRefreshLocalOnlyOnResume();
+            activity.startActivity(new Intent(activity, BatchCollectActivity.class));
+            dismissPopup();
+        });
+
+        // ---- 拜师管理子项：与归集同构的多对一拜师，名单同样是独立账本 ----
+        popView.findViewById(R.id.menu_disciple_manage).setOnClickListener(v -> {
+            // 门徒只存私钥引用，不动主界面账号集合与其链上值 → 只重建本地展示
+            activity.setRefreshGroupOnlyOnResume();
+            activity.startActivity(new Intent(activity, DiscipleManageActivity.class));
+            dismissPopup();
+        });
+
+        popView.findViewById(R.id.menu_master_manage).setOnClickListener(v -> {
+            // 师傅名单是独立账本，同理只重建本地展示
+            activity.setRefreshGroupOnlyOnResume();
+            activity.startActivity(new Intent(activity, MasterManageActivity.class));
+            dismissPopup();
+        });
+
+        popView.findViewById(R.id.menu_batch_apprentice).setOnClickListener(v -> {
+            activity.setRefreshLocalOnlyOnResume();
+            activity.startActivity(new Intent(activity, BatchApprenticeActivity.class));
             dismissPopup();
         });
 

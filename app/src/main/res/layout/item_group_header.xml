@@ -41,6 +41,36 @@
         android:textColor="#FF78909C"
         android:textSize="10sp" />
 
+    <!-- 组级全选/反选：默认隐藏，支持该能力的页面在绑定时置为可见（私钥/接收方/支付方管理） -->
+    <TextView
+        android:id="@+id/tv_grp_sel_all"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:background="?android:attr/selectableItemBackground"
+        android:paddingStart="8dp"
+        android:paddingTop="4dp"
+        android:paddingEnd="8dp"
+        android:paddingBottom="4dp"
+        android:text="@string/bulk_sel_all"
+        android:textColor="#FF1976D2"
+        android:textSize="11sp"
+        android:visibility="gone" />
+
+    <TextView
+        android:id="@+id/tv_grp_invert"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="4dp"
+        android:background="?android:attr/selectableItemBackground"
+        android:paddingStart="8dp"
+        android:paddingTop="4dp"
+        android:paddingEnd="8dp"
+        android:paddingBottom="4dp"
+        android:text="@string/bulk_invert"
+        android:textColor="#FF1976D2"
+        android:textSize="11sp"
+        android:visibility="gone" />
+
     <ImageView
         android:id="@+id/iv_expand"
         android:layout_width="18dp"

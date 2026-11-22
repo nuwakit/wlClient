@@ -96,6 +96,9 @@ public class PayerManageActivity extends BaseActivity implements PayerAdapter.Li
         findViewById(R.id.btn_back).setOnClickListener(v -> onBackPressed());
         // 支付方的加解密密码与私钥管理互相独立，在这里单独改
         findViewById(R.id.btn_change_pwd).setOnClickListener(v -> showChangePayerPwdDialog());
+        // 全局全选/反选：作用于所有支付方；分组级入口在组头上，同一套执行链路
+        findViewById(R.id.bulk_sel_all).setOnClickListener(v -> applyBulkEnabled(null, true));
+        findViewById(R.id.bulk_invert).setOnClickListener(v -> applyBulkEnabled(null, false));
 
         adapter = new PayerAdapter(this, visibleRows, allRows, expandedMap);
         rv.setLayoutManager(new LinearLayoutManager(this));
@@ -233,6 +236,61 @@ public class PayerManageActivity extends BaseActivity implements PayerAdapter.Li
         expandedMap.put(groupName, !open);
         rebuildVisibleRows();
         adapter.notifyDataSetChanged();
+    }
+
+    /** 组级全选 / 反选：groupName 由适配器传入，非空 */
+    @Override
+    public void onGroupBatch(String groupName, boolean selectAll) {
+        applyBulkEnabled(groupName, selectAll);
+    }
+
+    /** 批量启用切换重入 guard：全选/反选逐条写库，连点会双倍写库 */
+    private volatile boolean bulkRunning = false;
+
+    /**
+     * 批量启用切换（全选/反选）：groupName 为 null 时作用全部分组。
+     *
+     * <p>与行内开关同一个写入口 {@code setPayerEnabled}；主号是出资方、不参与
+     * 批量转账收款侧，但它的启用态本就由用户自由控制（不像私钥管理页固定禁用），
+     * 所以这里不跳过任何行。有失败不静默：收尾弹一次提示并整表重拉。</p>
+     */
+    private void applyBulkEnabled(String groupName, boolean selectAll) {
+        if (bulkRunning) {
+            Toast.makeText(this, R.string.bulk_running_hint, Toast.LENGTH_SHORT).show();
+            return;
+        }
+        final List<PayerItem> targets = new ArrayList<>();
+        for (PayerAdapter.Row r : allRows) {
+            if (r.type != PayerAdapter.Row.TYPE_ITEM || r.item == null) continue;
+            if (groupName != null && !groupName.equals(r.groupName)) continue;
+            targets.add(r.item);
+        }
+        if (targets.isEmpty()) {
+            Toast.makeText(this, R.string.bulk_no_target, Toast.LENGTH_SHORT).show();
+            return;
+        }
+        bulkRunning = true;
+        new Thread(() -> {
+            boolean failed = false;
+            for (PayerItem it : targets) {
+                boolean want = selectAll || !it.enabled;
+                if (it.enabled == want) continue;
+                try {
+                    book.setPayerEnabled(it.id, want);
+                    it.enabled = want;
+                } catch (Exception e) {
+                    failed = true;
+                }
+            }
+            final boolean fFailed = failed;
+            runOnUiThread(() -> {
+                bulkRunning = false;
+                if (fFailed) {
+                    Toast.makeText(this, R.string.toast_enabled_save_failed, Toast.LENGTH_SHORT).show();
+                }
+                loadData();   // 重拉一次：开关与概览统计都以库里真实值为准
+            });
+        }).start();
     }
 
     private void attachDrag() {

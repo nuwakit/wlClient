@@ -72,6 +72,9 @@ public class AddressManageActivity extends BaseActivity implements AddressAdapte
     // clearView 时拿不到位置，靠它记住本次拖拽属于哪个分组
     private String draggingGroup;
 
+    /** 批量启用切换重入 guard：全选/反选逐条写库，连点会双倍写库 */
+    private volatile boolean bulkRunning = false;
+
     // endregion
 
     // region 生命周期
@@ -97,6 +100,9 @@ public class AddressManageActivity extends BaseActivity implements AddressAdapte
 
         findViewById(R.id.btn_back).setOnClickListener(v -> onBackPressed());
         findViewById(R.id.btn_ratio_default).setOnClickListener(v -> showDefaultsDialog());
+        // 全局全选/反选：作用于所有接收方；分组级入口在组头上，同一套执行链路
+        findViewById(R.id.bulk_sel_all).setOnClickListener(v -> applyBulkEnabled(null, true));
+        findViewById(R.id.bulk_invert).setOnClickListener(v -> applyBulkEnabled(null, false));
 
         adapter = new AddressAdapter(this, visibleRows, allRows, expandedMap);
         rv.setLayoutManager(new LinearLayoutManager(this));
@@ -227,6 +233,56 @@ public class AddressManageActivity extends BaseActivity implements AddressAdapte
         expandedMap.put(groupName, !open);
         rebuildVisibleRows();
         adapter.notifyDataSetChanged();
+    }
+
+    /** 组级全选 / 反选：groupName 由适配器传入，非空 */
+    @Override
+    public void onGroupBatch(String groupName, boolean selectAll) {
+        applyBulkEnabled(groupName, selectAll);
+    }
+
+    /**
+     * 批量启用切换（全选/反选）：groupName 为 null 时作用全部分组。
+     *
+     * <p>与行内开关同一个写入口 {@code setAddressEnabled}，比例 100% 上限的拦截
+     * 因此同样生效：启用过程中一旦触顶就停在中途（已改的保留、未改的不动），
+     * 弹提示后整表重拉——比「偷偷跳过超限行」更好解释，也不会出现界面与库不一致。</p>
+     */
+    private void applyBulkEnabled(String groupName, boolean selectAll) {
+        if (bulkRunning) {
+            Toast.makeText(this, R.string.bulk_running_hint, Toast.LENGTH_SHORT).show();
+            return;
+        }
+        final List<AddressItem> targets = new ArrayList<>();
+        for (AddressAdapter.Row r : allRows) {
+            if (r.type != AddressAdapter.Row.TYPE_ITEM || r.item == null) continue;
+            if (groupName != null && !groupName.equals(r.groupName)) continue;
+            targets.add(r.item);
+        }
+        if (targets.isEmpty()) {
+            Toast.makeText(this, R.string.bulk_no_target, Toast.LENGTH_SHORT).show();
+            return;
+        }
+        bulkRunning = true;
+        new Thread(() -> {
+            String errMsg = null;
+            try {
+                for (AddressItem it : targets) {
+                    boolean want = selectAll || !it.enabled;
+                    if (it.enabled == want) continue;
+                    book.setAddressEnabled(it.id, want);
+                    it.enabled = want;
+                }
+            } catch (Exception e) {
+                errMsg = Web3AndroidUtil.safeMessage(e);
+            }
+            final String fErr = errMsg;
+            runOnUiThread(() -> {
+                bulkRunning = false;
+                if (fErr != null) Toast.makeText(this, fErr, Toast.LENGTH_LONG).show();
+                loadData();   // 重拉一次：开关与占用汇总都以库里真实值为准
+            });
+        }).start();
     }
 
     /**

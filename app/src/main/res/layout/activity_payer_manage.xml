@@ -34,6 +34,34 @@
             android:textSize="18sp"
             android:textStyle="bold" />
 
+        <!-- 全局全选/反选：作用于所有支付方的启用开关（分组级入口在组头上） -->
+        <TextView
+            android:id="@+id/bulk_sel_all"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:paddingStart="8dp"
+            android:paddingTop="6dp"
+            android:paddingEnd="8dp"
+            android:paddingBottom="6dp"
+            android:text="@string/bulk_sel_all"
+            android:textColor="@color/white"
+            android:textSize="13sp" />
+
+        <TextView
+            android:id="@+id/bulk_invert"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="4dp"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:paddingStart="8dp"
+            android:paddingTop="6dp"
+            android:paddingEnd="8dp"
+            android:paddingBottom="6dp"
+            android:text="@string/bulk_invert"
+            android:textColor="@color/white"
+            android:textSize="13sp" />
+
         <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"

@@ -40,4 +40,13 @@
     <string name="dialog_pwd_help_title">关于解密密码</string>
     <string name="dialog_pwd_help_msg">执行批量操作前需要输入解密密码，用于在本机内存中解开私钥，密码不会上传或保存。|常见情况：|· 提示密码错误：注意大小写、输入法全角字符和首尾空格；|· 想更换密码：在私钥管理右上角点击锁形按钮，选择「修改加解密密码」（需输入旧密码）；|· 忘记密码：无法找回，只能清空后重新导入私钥。</string>
     <string name="pwd_help_go_manage">去私钥管理</string>
+
+    <!-- 全选/反选（私钥管理、接收方管理、支付方管理共用）：
+         顶栏一对管全局，分组头一对管本组；作用对象是每行的启用开关 -->
+    <string name="bulk_sel_all">全选</string>
+    <string name="bulk_invert">反选</string>
+    <string name="bulk_sel_all_cd">全选当前范围的启用项</string>
+    <string name="bulk_invert_cd">反选当前范围的启用项</string>
+    <string name="bulk_no_target">没有可操作的账号</string>
+    <string name="bulk_running_hint">正在处理，请稍候</string>
 </resources>
