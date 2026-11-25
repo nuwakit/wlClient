@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 归集管理（菜单组 + 归集支付方/接收方/批量归集三页）的全部外化文案 -->
+<resources>
+
+    <!-- 菜单与页面标题 -->
+    <string name="title_collect_manage">归集管理</string>
+    <string name="title_collect_payer_manage">归集支付方</string>
+    <string name="title_collect_address_manage">归集接收方</string>
+    <string name="title_batch_collect">批量归集</string>
+
+    <!-- 无障碍描述 -->
+    <string name="cd_collect_import_key">导入私钥</string>
+    <string name="cd_collect_config">归集阈值设置</string>
+    <string name="cd_add_collect_address">新增归集接收方</string>
+
+    <!-- 导入私钥弹窗 -->
+    <string name="collect_import_title">导入私钥</string>
+    <string name="collect_import_pick_label">选择要导入的账号</string>
+    <string name="collect_import_subtitle">从私钥管理列表选择账号；导入只是建立引用，不复制私钥，也不影响原列表</string>
+    <string name="collect_import_empty">暂无可导入的私钥，请先到私钥管理添加</string>
+    <string name="collect_import_state_done">已导入</string>
+    <string name="collect_import_btn">导入所选</string>
+    <string name="collect_import_none_selected">请先勾选要导入的私钥</string>
+    <string name="collect_import_saved_fmt">成功导入 %1$d 条归集支付方</string>
+    <string name="collect_import_all_exists">所选私钥均已导入过，无新增</string>
+    <string name="collect_import_no_new">没有勾选新账号（已导入的不会重复导入）</string>
+    <string name="collect_key_no_addr">地址缺失，请先在私钥管理补全</string>
+
+    <!-- 归集支付方页 -->
+    <string name="collect_payer_empty_title">暂无归集支付方</string>
+    <string name="collect_payer_empty_msg">点右上角「导入私钥」\n从私钥管理列表添加账号</string>
+    <string name="collect_payer_go_import">去导入私钥</string>
+    <string name="collect_payer_edit_title">编辑支付方</string>
+    <string name="collect_payer_edit_subtitle">仅修改编号与分组，私钥引用与启用状态不变</string>
+    <string name="collect_payer_delete_title">删除支付方？</string>
+    <string name="collect_payer_delete_msg_fmt">确定删除归集支付方「%1$s」（%2$s）？\n私钥管理里的原记录不受影响</string>
+
+    <!-- 归集接收方页 -->
+    <string name="collect_receiver_pill">主接收方</string>
+    <string name="collect_label_set_master">设为主接收方（批量归集的唯一收款方）</string>
+    <string name="collect_addr_empty">暂无接收方，点右下角「+」添加</string>
+    <string name="collect_add_title">新增接收方</string>
+    <string name="collect_edit_title">编辑接收方</string>
+    <string name="collect_edit_subtitle">改编号、分组与地址；第一条接收方自动成为主接收方</string>
+    <string name="collect_hint_address">收款地址（0x 开头 40 位十六进制）</string>
+    <string name="collect_addr_delete_title">删除接收方？</string>
+    <string name="collect_addr_delete_msg_fmt">确定删除接收方 %1$s？\n若它是主接收方，主接收方将被清空</string>
+    <string name="collect_set_master_done">已设为主接收方</string>
+    <string name="collect_master_cleared_on_delete">已删除主接收方，请重新指定</string>
+
+    <!-- 归集阈值 -->
+    <string name="collect_threshold_title">归集阈值</string>
+    <string name="collect_threshold_subtitle">支付方 fLGNS 余额超过阈值的部分，批量归集时转入主接收方</string>
+    <string name="collect_threshold_label">阈值（fLGNS）</string>
+    <string name="collect_threshold_default_hint">默认 100</string>
+    <string name="collect_threshold_saved">阈值已保存</string>
+    <string name="collect_threshold_err_empty">阈值不能为空</string>
+    <string name="collect_summary_line_fmt">阈值 %1$s fLGNS：启用的支付方余额超出部分将归集到主接收方</string>
+
+    <!-- 批量归集页 -->
+    <string name="collect_receiver_label">主接收方</string>
+    <string name="collect_receiver_pill_in">收款方</string>
+    <string name="collect_receiver_unset">未设置</string>
+    <string name="collect_no_receiver">未设置主接收方，请先到归集接收方管理指定</string>
+    <string name="collect_go_receiver">去设置接收方</string>
+    <string name="collect_threshold_short">归集阈值</string>
+    <string name="collect_total_short">预计归集</string>
+    <string name="collect_state_loading_title">正在准备归集清单</string>
+    <string name="collect_state_loading_msg">读取名单并查询各支付方 fLGNS 余额…</string>
+    <string name="collect_state_empty_title">暂无可归集的支付方</string>
+    <string name="collect_state_empty_msg">请先到「归集支付方」导入私钥并启用账号</string>
+    <string name="collect_go_payer">去导入支付方</string>
+    <string name="collect_detail_title">归集明细</string>
+    <string name="collect_detail_count_fmt">%1$d 个支付方 · 超阈值 %2$d 个</string>
+    <string name="collect_running">归集中…</string>
+    <string name="collect_querying">查询中…</string>
+    <string name="collect_row_balance_fmt">余额 %1$s fLGNS</string>
+    <string name="collect_row_excess_fmt">归集 %1$s fLGNS</string>
+    <string name="collect_row_no_excess">未超阈值</string>
+    <string name="btn_collect_confirm">开始归集</string>
+    <string name="collect_no_excess">所有支付方余额都未超过阈值，无可归集金额</string>
+    <string name="collect_result_title">归集结果</string>
+    <string name="collect_done_fmt">归集完成：成功 %1$d 笔，失败 %2$d 笔</string>
+    <string name="collect_cancelled_log">⚠ 已取消，剩余账号未归集</string>
+    <string name="collect_manage_hint">支付方在归集支付方管理里维护</string>
+    <string name="cd_manage_collect_payer">去归集支付方管理</string>
+
+</resources>

@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 拜师管理（菜单组 + 门徒/师傅/批量拜师三页）的全部外化文案 -->
+<resources>
+
+    <!-- 菜单与页面标题 -->
+    <string name="title_apprentice_manage">拜师管理</string>
+    <string name="title_disciple_manage">门徒管理</string>
+    <string name="title_master_manage">师傅管理</string>
+    <string name="title_batch_apprentice">批量拜师</string>
+
+    <!-- 无障碍描述 -->
+    <string name="cd_apprentice_import_key">导入私钥</string>
+    <string name="cd_add_master">新增师傅</string>
+    <string name="cd_manage_disciple">去门徒管理</string>
+
+    <!-- 导入私钥弹窗（门徒来源：私钥管理列表） -->
+    <string name="apprentice_import_title">导入私钥</string>
+    <string name="apprentice_import_pick_label">选择要导入的门徒账号</string>
+    <string name="apprentice_import_subtitle">从私钥管理列表选择账号；导入只是建立引用，不复制私钥，也不影响原列表</string>
+    <string name="apprentice_import_empty">暂无可导入的私钥，请先到私钥管理添加</string>
+    <string name="apprentice_import_state_done">已导入</string>
+    <string name="apprentice_import_btn">导入所选</string>
+    <string name="apprentice_import_none_selected">请先勾选要导入的私钥</string>
+    <string name="apprentice_import_saved_fmt">成功导入 %1$d 条门徒</string>
+    <string name="apprentice_import_all_exists">所选私钥均已导入过，无新增</string>
+    <string name="apprentice_key_no_addr">地址缺失，请先在私钥管理补全</string>
+
+    <!-- 门徒管理页 -->
+    <string name="apprentice_empty_title">暂无门徒</string>
+    <string name="apprentice_empty_msg">点右上角「导入私钥」\n从私钥管理列表添加账号</string>
+    <string name="apprentice_go_import">去导入私钥</string>
+    <string name="apprentice_edit_title">编辑门徒</string>
+    <string name="apprentice_edit_subtitle">仅修改编号与分组，私钥引用与启用状态不变</string>
+    <string name="apprentice_delete_title">删除门徒？</string>
+    <string name="apprentice_delete_msg_fmt">确定删除门徒「%1$s」（%2$s）？\n私钥管理里的原记录不受影响</string>
+
+    <!-- 师傅管理页 -->
+    <string name="master_pill">主师傅</string>
+    <string name="master_label_set">设为主师傅（批量拜师的目标）</string>
+    <string name="master_empty">暂无师傅，点右下角「+」添加</string>
+    <string name="master_add_title">新增师傅</string>
+    <string name="master_edit_title">编辑师傅</string>
+    <string name="master_edit_subtitle">改编号、分组与地址；第一条师傅自动成为主师傅</string>
+    <string name="master_hint_address">师傅地址（0x 开头 40 位十六进制）</string>
+    <string name="master_delete_title">删除师傅？</string>
+    <string name="master_delete_msg_fmt">确定删除师傅 %1$s？\n若它是主师傅，主师傅将被清空</string>
+    <string name="master_set_master_done">已设为主师傅</string>
+    <string name="master_cleared_on_delete">已删除主师傅，请重新指定</string>
+    <string name="master_current_summary_fmt">当前主师傅：编号 %1$s（%2$s）</string>
+    <string name="master_current_summary_none">尚未设置主师傅，批量拜师前请先添加并指定</string>
+
+    <!-- 批量拜师页 -->
+    <string name="apprentice_master_label">主师傅</string>
+    <string name="apprentice_master_pill_in">师傅</string>
+    <string name="apprentice_pending_short">待拜师</string>
+    <string name="apprentice_bound_short">已拜师</string>
+    <string name="apprentice_pending_count_fmt">%1$d 个</string>
+    <string name="apprentice_master_unset">未设置</string>
+    <string name="apprentice_no_master">未设置主师傅，请先到师傅管理添加并指定</string>
+    <string name="apprentice_go_master">去设置师傅</string>
+    <string name="apprentice_state_loading_title">正在准备拜师清单</string>
+    <string name="apprentice_state_loading_msg">读取名单并查询各门徒的拜师状态…</string>
+    <string name="apprentice_state_empty_title">暂无可拜师的门徒</string>
+    <string name="apprentice_state_empty_msg">请先到「门徒管理」导入私钥并启用账号</string>
+    <string name="apprentice_go_disciple">去导入门徒</string>
+    <string name="apprentice_detail_title">拜师明细</string>
+    <string name="apprentice_detail_count_fmt">%1$d 个门徒 · 待拜师 %2$d 个</string>
+    <string name="apprentice_bind_rule">拜师规则：bind 为一次性绑定，已拜师的门徒不会重复发交易</string>
+    <string name="apprentice_running">拜师中…</string>
+    <string name="apprentice_querying">查询中…</string>
+    <string name="apprentice_row_state_unbound">未拜师</string>
+    <string name="apprentice_row_state_same">已拜本师</string>
+    <string name="apprentice_row_state_other">已拜他人</string>
+    <string name="apprentice_row_state_query_fail">查询失败</string>
+    <string name="btn_apprentice_confirm">开始拜师</string>
+    <string name="apprentice_nothing_to_bind">所有门徒都已拜入本师门下，无需重复拜师</string>
+    <string name="apprentice_result_title">拜师结果</string>
+    <string name="apprentice_done_fmt">拜师完成：成功 %1$d 笔，跳过 %2$d 笔，失败 %3$d 笔</string>
+    <string name="apprentice_log_bound_same">⏭ %1$s 已拜入本师门下，跳过</string>
+    <string name="apprentice_log_bound_other">✗ %1$s 已拜他人为师（一次性绑定不可更改）</string>
+    <string name="apprentice_log_success">✅ %1$s 拜师成功</string>
+    <string name="apprentice_log_query_fail">✗ %1$s 拜师状态查询失败，本笔未执行</string>
+    <string name="apprentice_cancelled_log">⚠ 已取消，剩余门徒未拜师</string>
+    <string name="apprentice_manage_hint">门徒在门徒管理里维护</string>
+
+</resources>

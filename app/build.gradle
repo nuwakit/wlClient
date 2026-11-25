@@ -26,7 +26,14 @@ android {
             minifyEnabled true
             shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-            signingConfig signingConfigs.debug
+            // 默认不挂 signingConfig：release 不签名，AS 菜单 Build APK(s) 直接出
+            // app-release-unsigned.apk（与 72d621d 之前的行为一致）。
+            // 需要能直接 adb 装夜神的签名包时走命令行：
+            //   gradlew :app:assembleRelease -PwithSign  → app-release.apk（debug 签名）
+            // 挂了 signingConfig 的构建打包即签名，未签名中间产物不会残留，两种产物互斥
+            if (project.hasProperty("withSign")) {
+                signingConfig signingConfigs.debug
+            }
         }
     }
     compileOptions {

@@ -22,6 +22,18 @@ docs/mint-guide/ui_*.xml
 
 # 本地 IDE 规则文件，不进版本库
 /AGENTS
+/AGENTS.md
+/.qoder/
+/.qoderignore
+/.idea/MarsCodeWorkspaceAppSettings.xml
+
+# 一次性诊断脚本与产物，不入库（保持 git status 的 ?? 列表长期为空，
+# 这样新建的功能文件一旦漏 add 就会立刻显眼）
+/__arena_sel.js
+/wl_diag.js
+/wl_keccak.js
+/apk_diag_*.txt
+/app/release/
 
 # Build consistency / secret hygiene: signing keystores must never be committed.
 # wl.jks was tracked since commit 35a7cf1 and has been purged from the whole history;
