@@ -49,6 +49,16 @@ public class AutoClearConfigActivity extends BaseActivity {
      */
     private Spinner spEnterRounds;
     /**
+     * 补币模式下拉：选中索引直接存入 ArenaConfig.fundMode（0=单场足额，1=多场足额）。
+     *
+     * <p>选项来自 arrays.xml 的 fund_mode_array，两项与 ArenaConfig.FUND_MODE_* 一一对应，
+     * 所以存取都不需要 ±1。它决定批量入场前置补币与批量充值的目标余额口径：
+     * 单场只补本场门票 100，多场按连打圈数查表预留（与 fundTargetFor 同一函数，不会跑偏）。</p>
+     */
+    private Spinner spFundMode;
+    /** 当前补币模式的一句话说明，随下拉选择实时切换 */
+    private TextView tvFundModeDesc;
+    /**
      * 批量转账方式下拉：选中索引直接存入 ArenaConfig.transferMode（0=按收益比例，1=按收益数额）。
      *
      * <p>选项来自 arrays.xml 的 transfer_mode_array，两项与 ArenaConfig.TRANSFER_MODE_* 一一对应，
@@ -167,6 +177,8 @@ public class AutoClearConfigActivity extends BaseActivity {
         spTimeUnit = findViewById(R.id.sp_time_unit);
         spPlayMode = findViewById(R.id.sp_play_mode);
         spEnterRounds = findViewById(R.id.sp_enter_rounds);
+        spFundMode = findViewById(R.id.sp_fund_mode);
+        tvFundModeDesc = findViewById(R.id.tv_fund_mode_desc);
         spTransferMode = findViewById(R.id.sp_transfer_mode);
         tvTransferModeDesc = findViewById(R.id.tv_transfer_mode_desc);
         swAutoReplenish = findViewById(R.id.sw_auto_replenish);
@@ -192,6 +204,18 @@ public class AutoClearConfigActivity extends BaseActivity {
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
                 applyTransferModeDesc(position);
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) { }
+        });
+
+        // 补币模式说明同样实时切换：单场足额要讲清「冠军下一场会再补一次」，
+        // 否则用户只看到补币次数变多会以为出了问题
+        spFundMode.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                applyFundModeDesc(position);
             }
 
             @Override
@@ -250,6 +274,18 @@ public class AutoClearConfigActivity extends BaseActivity {
             }
             spEnterRounds.setSelection(rounds - 1);
 
+            // 补币模式：只有 0/1 两个合法值，越界（包括旧版本没这个 key 时手动改脏）回默认的单场足额
+            int fMode = ArenaConfig.fundMode;
+            if (fMode < 0 || fMode >= spFundMode.getCount()) {
+                String warnMsg = "配置项 fundMode 越界: " + fMode + "，已重置为默认值 "
+                        + ArenaConfig.DEFAULT_FUND_MODE + "(单场足额)";
+                Log.w("AutoClearConfig", warnMsg);
+                writeErrorToDb("CONFIG_WARN", warnMsg);
+                fMode = Math.min(ArenaConfig.DEFAULT_FUND_MODE, spFundMode.getCount() - 1);
+            }
+            spFundMode.setSelection(fMode);
+            applyFundModeDesc(fMode);
+
             // 批量转账方式：只有 0/1 两个合法值，越界（包括旧版本没这个 key 时手动改脏）回默认比例模式
             int tMode = ArenaConfig.transferMode;
             if (tMode < 0 || tMode >= spTransferMode.getCount()) {
@@ -291,6 +327,10 @@ public class AutoClearConfigActivity extends BaseActivity {
             spPlayMode.setSelection(0);
             spEnterRounds.setSelection(Math.min(ArenaConfig.DEFAULT_ENTER_ROUNDS,
                     spEnterRounds.getCount()) - 1);
+            int fallbackFund = Math.min(ArenaConfig.DEFAULT_FUND_MODE,
+                    Math.max(0, spFundMode.getCount() - 1));
+            spFundMode.setSelection(fallbackFund);
+            applyFundModeDesc(fallbackFund);
             int fallbackMode = Math.min(ArenaConfig.DEFAULT_TRANSFER_MODE,
                     Math.max(0, spTransferMode.getCount() - 1));
             spTransferMode.setSelection(fallbackMode);
@@ -344,6 +384,7 @@ public class AutoClearConfigActivity extends BaseActivity {
             ArenaConfig.autoClearIntervalUnitIndex = spTimeUnit.getSelectedItemPosition();
             ArenaConfig.playModeIndex = spPlayMode.getSelectedItemPosition();
             ArenaConfig.enterRounds = spEnterRounds.getSelectedItemPosition() + 1;
+            ArenaConfig.fundMode = spFundMode.getSelectedItemPosition();
             ArenaConfig.transferMode = spTransferMode.getSelectedItemPosition();
             ArenaConfig.autoReplenishEnable = swAutoReplenish.isChecked();
             ArenaConfig.logClearEnable = swLogClearEnable.isChecked();
@@ -358,6 +399,7 @@ public class AutoClearConfigActivity extends BaseActivity {
                     "私钥清除间隔=" + ArenaConfig.autoClearIntervalValue + " " + getTimeUnitText(ArenaConfig.autoClearIntervalUnitIndex) + ", " +
                     "入场模式=" + getPlayModeText(ArenaConfig.playModeIndex) + ", " +
                     "连打场数=" + ArenaConfig.enterRounds + " 场, " +
+                    "补币模式=" + getFundModeText(ArenaConfig.fundMode) + ", " +
                     "批量转账=" + getTransferModeText(ArenaConfig.transferMode) + ", " +
                     "自动补币=" + (ArenaConfig.autoReplenishEnable ? "开启" : "关闭") + ", " +
                     "日志自动清除=" + (ArenaConfig.logClearEnable ? "开启" : "关闭") + ", " +
@@ -413,6 +455,15 @@ public class AutoClearConfigActivity extends BaseActivity {
         return getString(R.string.transfer_mode_ratio);
     }
 
+    /** 补币模式索引转文案，越界时回退到默认的单场足额，只用于日志拼接 */
+    private String getFundModeText(int modeIndex) {
+        String[] modes = getResources().getStringArray(R.array.fund_mode_array);
+        if (modeIndex >= 0 && modeIndex < modes.length) {
+            return modes[modeIndex];
+        }
+        return getString(R.string.fund_mode_single);
+    }
+
     /**
      * 按当前选中的转账方式刷新一句话说明。
      *
@@ -424,6 +475,17 @@ public class AutoClearConfigActivity extends BaseActivity {
         tvTransferModeDesc.setText(modeIndex == ArenaConfig.TRANSFER_MODE_AMOUNT
                 ? R.string.auto_clear_transfer_mode_desc_amount
                 : R.string.auto_clear_transfer_mode_desc_ratio);
+    }
+
+    /**
+     * 按当前选中的补币模式刷新一句话说明。
+     * 与 applyTransferModeDesc 同一套规则：越界只回退显示，不改选中项。
+     */
+    private void applyFundModeDesc(int modeIndex) {
+        if (tvFundModeDesc == null) return;
+        tvFundModeDesc.setText(modeIndex == ArenaConfig.FUND_MODE_MULTI
+                ? R.string.auto_clear_fund_mode_desc_multi
+                : R.string.auto_clear_fund_mode_desc_single);
     }
 
     /** 私钥间隔区的启用态：整块透明度 + 输入框/下拉可编辑性同步切换 */

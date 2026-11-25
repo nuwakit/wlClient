@@ -105,9 +105,9 @@ public class BatchFundTask {
     /**
      * 工作流调用版充值：没有弹窗，直接把差额补齐后返回。
      *
-     * <p>目标余额按连打圈数取 {@link ArenaConfig#fundTargetFor(int)}，<b>不是固定 100</b>：
-     * 每夺冠一次就多耗一张门票（冠军拿的是锁仓甲子，不是 claimable 现金），
-     * 只补 100 会让冠军号在下一圈买不起票 → 这一轮凑不满 24 座 → 后续圈全部被取消。</p>
+     * <p>目标余额按补币模式取 {@link ArenaConfig#fundTargetFor(int)}：多场足额按连打圈数预留
+     * （每夺冠一次多耗一张门票，冠军拿的是锁仓甲子不是现金）；单场足额固定 100，
+     * 冠军号由 {@code BatchEnterTask} 的逐圈补币在每圈入场前补足，不靠这里多预。</p>
      *
      * <p>圈数由调用方在任务启动时快照传入，本方法内<b>不再回读</b>
      * {@code ArenaConfig.enterRounds}：读一次存成局部变量，筛名单 / 二次校验 / 算差额 / 写日志
@@ -170,14 +170,13 @@ public class BatchFundTask {
 
                 if (needFundAddrs.isEmpty()) {
                     if (callback != null) callback.onLog("", "FUND",
-                            "所有账号余额已达 " + toToken(target) + " fLGNS（连打 "
-                                    + roundsUsed + " 圈），无需充值");
+                            "所有账号余额已达 " + toToken(target) + " fLGNS（"
+                                    + fundModeDesc(roundsUsed) + "），无需充值");
                     return;
                 }
 
-                if (callback != null) callback.onLog("", "FUND", "充值目标：连打 "
-                        + roundsUsed + " 圈 × 每号 " + toToken(target)
-                        + " fLGNS（预留冠军轮空的门票）");
+                if (callback != null) callback.onLog("", "FUND", "充值目标："
+                        + fundModeDesc(roundsUsed) + " · 每号 " + toToken(target) + " fLGNS");
 
                 String masterPk = mgr.decryptCipherText(masterEntry.cipherText, pwdCharArray);
                 ECKeyPair masterKeyPair = Web3AndroidUtil.pkToKeyPair(masterPk);
@@ -448,6 +447,15 @@ public class BatchFundTask {
             if (e.id == masterId) return e;
         }
         return null;
+    }
+
+    /**
+     * 补币口径的日志短语：单场足额只报「单场足额」——此时圈数不参与目标计算，
+     * 写「连打 N 圈」会让人误以为补了 N 张门票；多场足额才报圈数（查表预留）。
+     */
+    static String fundModeDesc(int roundsUsed) {
+        if (ArenaConfig.fundMode == ArenaConfig.FUND_MODE_SINGLE) return "单场足额·每场只备 100";
+        return "连打 " + roundsUsed + " 圈（多场足额）";
     }
 
     private static void showMasterErrorDialog(Activity activity, MainDialogHelper dialogHelper,

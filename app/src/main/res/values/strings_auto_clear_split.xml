@@ -14,6 +14,16 @@
     <string name="auto_clear_tv_enter_rounds_label">连打场数</string>
 
     <!--
+        补币模式（对应 ArenaConfig.fundMode）：接在连打场数下面，同属「怎么打」这张卡。
+        下拉两项的文本同时被 arrays.xml 的 fund_mode_array 引用，索引不能调位。
+    -->
+    <string name="auto_clear_tv_fund_mode_label">补币模式</string>
+    <string name="fund_mode_single">单场足额（默认）</string>
+    <string name="fund_mode_multi">多场足额</string>
+    <string name="auto_clear_fund_mode_desc_single">不管连打几场，每场只备 100 fLGNS；连打时每圈入场前自动把用空的号补到 100</string>
+    <string name="auto_clear_fund_mode_desc_multi">按连打场数预留门票（如连打 2 场补到 200 fLGNS），一次补够、中途不再逐圈补币</string>
+
+    <!--
         批量转账卡片（对应 ArenaConfig.transferMode）：接在连打场数下面。
         下拉两项的文本同时被 arrays.xml 的 transfer_mode_array 引用，索引不能调位。
     -->
@@ -25,7 +35,7 @@
 
     <!-- 自动补币开关（对应 ArenaConfig.autoReplenishEnable）：接在批量转账卡片下面 -->
     <string name="auto_clear_tv_auto_replenish_label">自动补币</string>
-    <string name="auto_clear_auto_replenish_desc">批量入场前，自动把 fLGNS 不够本次门票的号从主号补齐（与批量充值同口径：连打 1 场补到 100 fLGNS）</string>
+    <string name="auto_clear_auto_replenish_desc">批量入场前，自动把 fLGNS 不够本次门票的号从主号补齐（补多少看「补币模式」：单场足额补到 100，多场足额按连打场数预留）</string>
 
     <string name="auto_clear_desc_note_v2">说明：&#10;• 私钥：到达设定时长后，打开 APP 时立即清空全部私钥，需重新添加才能使用&#10;• 日志：默认已启用并保留最近 1 天，到达设定时长后仅删除早于该时长的旧日志&#10;• 受系统省电与后台限制，清理可能延迟，重新打开 APP 会立即校验&#10;• 建议私钥间隔设置 15 分钟以上，日志间隔按需设置</string>
 </resources>

@@ -306,8 +306,11 @@ public class BatchFundConfirmActivity extends BaseActivity {
             // 无需充值不再弹框打断，页面给出结论并置灰确认
             btnConfirm.setAlpha(0.5f);
             btnConfirm.setClickable(false);
+            // 单场足额下报「连打 N 场」会误导（目标根本没按 N 场预留），文案分流
             android.widget.Toast.makeText(this,
-                    getString(R.string.fund_no_need_target_fmt, fundTargetText(), ArenaConfig.enterRounds),
+                    ArenaConfig.fundMode == ArenaConfig.FUND_MODE_SINGLE
+                            ? getString(R.string.fund_no_need_target_single_fmt, fundTargetText())
+                            : getString(R.string.fund_no_need_target_fmt, fundTargetText(), ArenaConfig.enterRounds),
                     android.widget.Toast.LENGTH_LONG).show();
         }
     }
@@ -544,10 +547,12 @@ public class BatchFundConfirmActivity extends BaseActivity {
                 h.tvMasterBalance.setText(getString(R.string.fund_balance_fmt,
                         masterBalance == null ? getString(R.string.common_placeholder) : masterBalance));
             }
-            // 明细标题右侧的胶囊：告清「为什么不是 100」——目标金额由连打场数推算，
+            // 明细标题右侧的胶囊：告清「为什么是这个数」——目标金额由补币模式推算，
             // 与 BatchFundTask 算差额用的同一个 ArenaConfig.fundTargetFor()，不会两边不一致
-            h.tvDetailCount.setText(getString(R.string.fund_detail_target_fmt,
-                    fundTargetText(), ArenaConfig.enterRounds));
+            h.tvDetailCount.setText(ArenaConfig.fundMode == ArenaConfig.FUND_MODE_SINGLE
+                    ? getString(R.string.fund_detail_target_single_fmt, fundTargetText())
+                    : getString(R.string.fund_detail_target_fmt,
+                            fundTargetText(), ArenaConfig.enterRounds));
             // 查询中胶囊显示进度，不被重新绑定覆盖回总数
             if (!querying) {
                 tvHeaderCount.setText(getString(R.string.fund_hero_count_fmt, fundList.size()));

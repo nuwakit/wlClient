@@ -58,4 +58,18 @@
         <item>@string/transfer_mode_ratio</item>
         <item>@string/transfer_mode_amount</item>
     </string-array>
+
+    <!--
+        补币模式（对应 ArenaConfig.fundMode）：接在连打场数下面。
+
+        索引必须与 ArenaConfig.FUND_MODE_SINGLE / FUND_MODE_MULTI 一一对应，
+        所以这一项只能加在末尾，中间插位会静默改变已有配置的含义。
+
+        单场足额：每次入场只补到 100 fLGNS（门票）；多场足额：按圈数查表预留
+        （连打 2 场补到 200，旧版唯一行为）。默认单项 = 单场足额。
+    -->
+    <string-array name="fund_mode_array">
+        <item>@string/fund_mode_single</item>
+        <item>@string/fund_mode_multi</item>
+    </string-array>
 </resources>

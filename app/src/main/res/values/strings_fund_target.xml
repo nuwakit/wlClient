@@ -3,13 +3,16 @@
     <!--
         批量充值的目标金额提示。
 
-        目标不是固定 100：每夺冠一次就多耗一张门票（冠军拿的是锁仓甲子，不是 claimable 现金），
-        只补 100 会让冠军号在下一圈买不起票，进而让这一轮凑不满 24 座、后续圈全部取消。
+        目标看补币模式（ArenaConfig.fundMode）：单场足额固定 100（每场只备本场门票，
+        冠军号由逐圈补币兜底）；多场足额才按连打场数查表预留（每夺冠一次多耗一张门票，
+        只补 100 会让冠军号下一圈买不起票，进而这一轮凑不满 24 座、后续圈全部取消）。
         具体倍数由 ArenaConfig.fundTargetFor(enterRounds) 决定，这里只负责把口径写清楚。
 
         用词统一成「场」而不是「圈」：系统配置页写的也是「连打场数」，
         界面两处用同一套说法用户才不会以为是两个不同的设置。
     -->
     <string name="fund_detail_target_fmt">每号 %1$s · 连打 %2$d 场</string>
+    <string name="fund_detail_target_single_fmt">每号 %1$s · 单场足额</string>
     <string name="fund_no_need_target_fmt">所有启用账户的余额均已达到目标（每号 %1$s fLGNS、连打 %2$d 场），暂时不需要充值。</string>
+    <string name="fund_no_need_target_single_fmt">所有启用账户的余额均已达到目标（每号 %1$s fLGNS、单场足额），暂时不需要充值。</string>
 </resources>

@@ -281,6 +281,58 @@
                                 android:src="@drawable/ic_dropdown_arrow_svg" />
                         </RelativeLayout>
                     </LinearLayout>
+
+                    <!-- 第三行：补币模式。接在连打场数下面，决定自动补币/批量充值的目标口径
+                         （ArenaConfig.fundMode：单场足额只备本场门票，多场足额按圈数预留） -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="44dp"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+
+                        <TextView
+                            android:layout_width="108dp"
+                            android:layout_height="wrap_content"
+                            android:ellipsize="end"
+                            android:maxLines="1"
+                            android:text="@string/auto_clear_tv_fund_mode_label"
+                            android:textColor="@color/text_secondary"
+                            android:textSize="13sp" />
+
+                        <RelativeLayout
+                            android:layout_width="0dp"
+                            android:layout_height="40dp"
+                            android:layout_marginStart="10dp"
+                            android:layout_weight="1">
+
+                            <Spinner
+                                android:id="@+id/sp_fund_mode"
+                                style="@style/AppSpinner"
+                                android:layout_width="match_parent"
+                                android:layout_height="match_parent"
+                                android:entries="@array/fund_mode_array" />
+
+                            <ImageView
+                                android:layout_width="18dp"
+                                android:layout_height="18dp"
+                                android:layout_alignParentEnd="true"
+                                android:layout_centerVertical="true"
+                                android:layout_marginEnd="8dp"
+                                android:clickable="false"
+                                android:focusable="false"
+                                android:importantForAccessibility="no"
+                                android:src="@drawable/ic_dropdown_arrow_svg" />
+                        </RelativeLayout>
+                    </LinearLayout>
+
+                    <!-- 一句话说明当前补币模式的口径，随下拉选择实时切换（与批量转账说明同一套做法） -->
+                    <TextView
+                        android:id="@+id/tv_fund_mode_desc"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="11sp" />
                 </LinearLayout>
             </androidx.cardview.widget.CardView>
 

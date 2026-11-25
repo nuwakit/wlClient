@@ -537,9 +537,9 @@ public class MainActivity extends BaseActivity implements TaskLogCallback, Batch
     /**
      * 完整工作流：充 fLGNS 门票 → 入场（按 {@link ArenaConfig#enterRounds} 圈）→ 领奖 → 铸造盟主令，一次跑完。
      *
-     * <p>第 1 步的充值目标与圈数联动（{@link ArenaConfig#fundTargetFor(int)}）：补多少只看圈数，
-     * 默认 1 圈时每号补到 100，12 圈时补到 500——冠军拿的是锁仓甲子、不会形成 claimable，
-     * 只补一场门票的号第二圈就买不起票，缺一个座就让这一轮凑不满 24 座、后续圈全部取消。</p>
+     * <p>第 1 步的充值目标按补币模式取（{@link ArenaConfig#fundTargetFor(int)}）：单场足额固定 100，
+     * 冠军号由逐圈补币兜底；多场足额才与圈数联动——每夺冠一次就多耗一张门票（冠军拿的是锁仓甲子、
+     * 不会形成 claimable），缺一个座就让这一轮凑不满 24 座、后续圈全部取消。</p>
      *
      * <p>第 1 步<b>不含 DAI 手续费</b>：手续费不够的交易会直接失败，
      * 所以 DAI 必须先到「批量充值手续费」页面补足，再点这个流程。</p>

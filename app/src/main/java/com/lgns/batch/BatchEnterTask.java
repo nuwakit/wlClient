@@ -435,6 +435,12 @@ public class BatchEnterTask {
                 return;
             }
             callback.onLog("", "ENTER", "===== 第 " + r + "/" + total + " 圈 =====");
+            // 单场足额逐圈补币：前置补币只在全部圈之前跑一次，补到 100 的号
+            // 夺冠后（拿锁仓甲子、无 claimable）下一圈钱包见底，不逐圈补足就会缺座停摆
+            if (r > 1 && ArenaConfig.autoReplenishEnable
+                    && ArenaConfig.fundMode == ArenaConfig.FUND_MODE_SINGLE) {
+                topUpSingleMode(callback, selectedList, sessionCryptoKey, r);
+            }
             batchEnterAllResume(ctx, callback, playMode, selectedList, sessionCryptoKey);
 
             if (r == total) break;
@@ -496,6 +502,105 @@ public class BatchEnterTask {
         if (remainRounds <= 0) return;
         callback.onLog("", "ENTER", "💡 续打：再点一次「批量入场」即可 —— 配置不用改，"
                 + "今日剩余场次不够时会自动夹到 " + remainRounds + " 圈以内");
+    }
+
+    /**
+     * 单场足额逐圈补币：把钱包不足 100 fLGNS 的号由主号补到正好 100，再开这一圈。
+     *
+     * <p>为什么需要它：前置补币（{@link BatchFundTask#executeAutoFund}）只在全部圈之前跑一次，
+     * 单场足额的目标只有 100；第 1 圈后输家拿到 claimable 够下一场，但冠军拿的是锁仓甲子、
+     * 钱包归零，不逐圈补足就会命中「奖金、钱包都不足 100」被跳过 → 这一轮缺座永不封盘。
+     * 多场足额没有这个问题（一次性按最坏情况预留），所以不在这里重复补。</p>
+     *
+     * <p>静默跳过式补币：全部够则不发交易也不刷日志（连打时每圈都经过这里）；
+     * 只有真补了币才等 5 秒再入场，与前置补币同一口径，避免入场预检读到旧余额。
+     * 单号失败只记日志不中断整批，与 {@code executeAutoFund} 同一套容错。</p>
+     */
+    private static void topUpSingleMode(TaskLogCallback callback, List<KeyListItem> selectedList,
+                                        char[] sessionCryptoKey, int roundNo) {
+        long masterId;
+        KeyStoreManager.KeyEntry masterEntry;
+        try {
+            KeyStoreManager mgr = AppGlobal.getKeyStoreManager();
+            masterId = mgr.getMasterAccountId();
+            if (masterId <= 0) return;
+            masterEntry = null;
+            for (KeyStoreManager.KeyEntry e : mgr.loadKeyEntryList()) {
+                if (e.id == masterId) { masterEntry = e; break; }
+            }
+            if (masterEntry == null || masterEntry.cipherText == null) return;
+        } catch (Exception e) {
+            callback.onLog("", "FUND", "⚠ 逐圈补币初始化失败（本圈照常入场）：" + msgOf(e));
+            return;
+        }
+
+        Web3j web3j = null;
+        try {
+            web3j = Web3AndroidUtil.dialAny();
+            // 筛出钱包不足本场门票的号（同 executeAutoFund 口径：主号与调试地址不进名单）
+            List<String> addrs = new ArrayList<>();
+            List<String> labels = new ArrayList<>();
+            List<BigInteger> diffs = new ArrayList<>();
+            for (KeyListItem item : selectedList) {
+                if (item.keyId == masterId) continue;
+                if (ArenaConfig.DEBUG_FIXED_ADDR_ENABLE
+                        && ArenaConfig.isDebugAddr(item.address)) continue;
+                if (item.address == null || item.address.equalsIgnoreCase(masterEntry.address)) continue;
+                BigInteger bal = ArenaContractApi.callErc20Balance(web3j, item.address);
+                if (bal.compareTo(ENTRY_FEE) < 0) {
+                    addrs.add(item.address);
+                    diffs.add(ENTRY_FEE.subtract(bal));
+                    labels.add((item.customCode != null && !item.customCode.isEmpty())
+                            ? item.customCode : item.displayNo);
+                }
+            }
+            if (addrs.isEmpty()) return;
+
+            callback.onLog("", "FUND", "🔄 单场足额逐圈补币：第 " + roundNo + " 圈前 " + addrs.size()
+                    + " 个号门票不足 100 fLGNS，由主号补齐");
+            String masterPk = AppGlobal.getKeyStoreManager()
+                    .decryptCipherText(masterEntry.cipherText, sessionCryptoKey);
+            ECKeyPair masterKeyPair = Web3AndroidUtil.pkToKeyPair(masterPk);
+            String masterAddr = Web3AndroidUtil.getAddress(masterKeyPair);
+            BigInteger gasPrice = web3j.ethGasPrice().send().getGasPrice();
+            BigInteger nonce = web3j.ethGetTransactionCount(masterAddr,
+                    DefaultBlockParameterName.PENDING).send().getTransactionCount();
+
+            int topped = 0;
+            for (int i = 0; i < addrs.size(); i++) {
+                if (Web3AndroidUtil.isStopRequested()) {
+                    callback.onLog("", "FUND", "⏸ 逐圈补币中断：剩余 " + (addrs.size() - i)
+                            + " 个号未补（已发出的交易不回滚）");
+                    break;
+                }
+                try {
+                    ArenaContractApi.doErc20Transfer(web3j, masterKeyPair, addrs.get(i),
+                            diffs.get(i), nonce, gasPrice);
+                    nonce = nonce.add(BigInteger.ONE);
+                    topped++;
+                    callback.onLog("", "FUND", labels.get(i) + " 补入 "
+                            + new java.math.BigDecimal(diffs.get(i)).divide(
+                                    new java.math.BigDecimal(BigInteger.TEN.pow(18)), 2,
+                                    java.math.RoundingMode.HALF_UP)
+                            + " fLGNS");
+                } catch (Exception e) {
+                    callback.onLog("", "FUND", "错误：" + labels.get(i) + " 补币失败: " + msgOf(e));
+                }
+            }
+            if (topped > 0) {
+                try {
+                    Thread.sleep(5000L);
+                } catch (InterruptedException ignore) {
+                    Thread.currentThread().interrupt();
+                }
+            }
+        } catch (Exception e) {
+            callback.onLog("", "FUND", "错误：逐圈补币异常（本圈照常入场）：" + msgOf(e));
+        } finally {
+            if (web3j != null) {
+                try { web3j.shutdown(); } catch (Exception ignore) {}
+            }
+        }
     }
 
     /**

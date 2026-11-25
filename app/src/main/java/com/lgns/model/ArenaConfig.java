@@ -161,6 +161,9 @@ public class ArenaConfig {
      * 「判断是否已够」三件事，<b>三处必须是同一个值</b>，否则会出现「筛进来了却算出差额 0」。</p>
      */
     public static BigInteger fundTargetFor(int rounds) {
+        // 单场足额：不管连打几场，每场只备本场门票 100；冠军号（拿锁仓甲子、无 claimable）
+        // 由 BatchEnterTask 的逐圈补币在每圈入场前补足，不靠这里多预
+        if (fundMode == FUND_MODE_SINGLE) return ENTRY_FEE;
         int r = Math.max(1, Math.min(rounds, MAX_ENTRIES_PER_DAY));
         return ENTRY_FEE.multiply(BigInteger.valueOf(FUND_TICKETS_BY_ROUNDS[r]));
     }
@@ -274,6 +277,20 @@ public class ArenaConfig {
     public static final int DEFAULT_TRANSFER_MODE = TRANSFER_MODE_RATIO;
     /** 批量转账分配方式的最大索引（越界保护用，与 arrays.xml 的 transfer_mode_array 项数对应） */
     public static final int TRANSFER_MODE_MAX = TRANSFER_MODE_AMOUNT;
+
+    /**
+     * 补币模式：单场足额（{@link #FUND_MODE_SINGLE}）——每次入场只看本场门票 100 fLGNS，
+     * 不够就补到 100 即停；多场足额（{@link #FUND_MODE_MULTI}）——按连打圈数查
+     * {@link #FUND_TICKETS_BY_ROUNDS} 预留夺冠额外门票（连打 2 场补到 200，旧版唯一行为）。
+     * 索引与 arrays.xml 的 fund_mode_array 一一对应。
+     */
+    public static final int FUND_MODE_SINGLE = 0;
+    /** 补币模式：多场足额（按圈数预留，见 {@link #FUND_MODE_SINGLE} 的说明） */
+    public static final int FUND_MODE_MULTI = 1;
+    /** 补币模式出厂默认：单场足额（新语义，每次只备本场门票） */
+    public static final int DEFAULT_FUND_MODE = FUND_MODE_SINGLE;
+    /** 补币模式最大索引（越界保护用，与 arrays.xml 的 fund_mode_array 项数对应） */
+    public static final int FUND_MODE_MAX = FUND_MODE_MULTI;
 
     /** 一轮需要的座位数（合约 SEATS）：满 24 座才封盘、才会进结算队列 */
     public static final int SEATS_PER_ROUND = 24;
@@ -440,6 +457,14 @@ public class ArenaConfig {
     public static int transferMode = DEFAULT_TRANSFER_MODE;
 
     /**
+     * 补币模式：{@link #FUND_MODE_SINGLE} 单场足额（默认，每次入场只补到 100 fLGNS），
+     * {@link #FUND_MODE_MULTI} 多场足额（按连打圈数查表预留）。只影响
+     * {@link #fundTargetFor(int)} 的取值，批量充值 / 批量入场前置补币 / 确认页三处同口径联动。
+     * 与 AppPrefs 键 "fund_mode" 同步落盘；旧设备无此键时默认单场足额。
+     */
+    public static int fundMode = DEFAULT_FUND_MODE;
+
+    /**
      * 自动补币开关（默认开启）：开着时操作「批量入场」，入场前先按批量充值同口径
      * （{@link #fundTargetFor}(圈数)）检查各账号 fLGNS 门票余额，不够的自动由主号补齐后再入场。
      * 与 AppPrefs 键 "auto_replenish_enable" 同步落盘；旧设备无此键时默认开。
@@ -474,6 +499,7 @@ public class ArenaConfig {
         editor.putInt("play_mode_index", playModeIndex);
         editor.putInt("enter_rounds", enterRounds);
         editor.putInt("transfer_mode", transferMode);
+        editor.putInt("fund_mode", fundMode);
         editor.putBoolean("auto_replenish_enable", autoReplenishEnable);
         editor.putBoolean("log_clear_enable", logClearEnable);
         editor.putInt("log_clear_interval_value", logClearIntervalValue);
@@ -503,6 +529,9 @@ public class ArenaConfig {
         int tm = sp.getInt("transfer_mode", DEFAULT_TRANSFER_MODE);
         transferMode = (tm == TRANSFER_MODE_RATIO || tm == TRANSFER_MODE_AMOUNT)
                 ? tm : DEFAULT_TRANSFER_MODE;
+        // 补币模式：只认 0/1 两个已知值，越界（包括旧版本没写过的 key）一律回默认的单场足额
+        int fm = sp.getInt("fund_mode", DEFAULT_FUND_MODE);
+        fundMode = (fm == FUND_MODE_SINGLE || fm == FUND_MODE_MULTI) ? fm : DEFAULT_FUND_MODE;
         // 自动补币: 旧设备无此键时默认开启
         autoReplenishEnable = sp.getBoolean("auto_replenish_enable", true);
         logClearEnable = sp.getBoolean("log_clear_enable", true);
