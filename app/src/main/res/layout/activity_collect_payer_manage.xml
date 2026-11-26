@@ -93,7 +93,7 @@
             android:layout_height="40dp"
             android:background="?android:attr/selectableItemBackgroundBorderless"
             android:contentDescription="@string/cd_collect_import_key"
-            android:src="@drawable/ic_export_svg"
+            android:src="@drawable/ic_import_key_svg"
             app:tint="@color/white" />
     </LinearLayout>
 

@@ -63,6 +63,17 @@
             android:textColor="@color/white"
             android:textSize="13sp" />
 
+        <!-- 右上角：导入私钥（从私钥管理列表选号，只带地址过来，比例与数额用默认值） -->
+        <ImageButton
+            android:id="@+id/btn_import_key"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/cd_collect_import_key"
+            android:padding="8dp"
+            android:src="@drawable/ic_import_key_svg"
+            app:tint="@color/white" />
+
         <!-- 右上角：新增时的默认值入口（比例与数额在同一个弹窗里改） -->
         <ImageButton
             android:id="@+id/btn_ratio_default"

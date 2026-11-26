@@ -1,0 +1,15 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <!-- 「导入私钥」按钮专用：导入语义 × 钥匙语义的组合图标。
+         上半部是钥匙：圆环钥匙头 + 杆身带侧齿，杆尾收成向下箭头（表「导入进来」）；
+         下半部是开口托盘，箭头正落入槽口。
+         历史版本一：ic_export_svg（下箭头+底槽）被误读为下载；
+         历史版本二：Material vpn_key 纯钥匙，又缺「导入」动作语义 -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:fillType="evenOdd"
+        android:pathData="M12,1.6a2.4,2.4 0 1,0 0,4.8a2.4,2.4 0 1,0 0,-4.8zM12,2.8a1.2,1.2 0 1,1 0,2.4a1.2,1.2 0 1,1 0,-2.4zM11.2,6.6L12.8,6.6L12.8,10.2L14.8,10.2L12,13.4L9.2,10.2L11.2,10.2zM12.8,7.4L15,7.4L15,8.8L12.8,8.8zM3,13L5,13L5,20L19,20L19,13L21,13L21,20A2,2 0 0,1 19,22L5,22A2,2 0 0,1 3,20Z" />
+</vector>

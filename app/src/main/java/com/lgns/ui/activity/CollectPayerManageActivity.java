@@ -309,8 +309,9 @@ public class CollectPayerManageActivity extends BaseActivity implements PayerAda
 
         // 读私钥列表 + 已导入判定都涉及查库，放后台线程，回来再灌数据
         new Thread(() -> {
+            // 纯元数据读取走 getMetaManager：会话过期/直启未解锁时照常返回，不抛「会话已过期」
             final List<KeyStoreManager.KeyEntry> keys =
-                    AppGlobal.getKeyStoreManager().loadKeyEntryList();
+                    AppGlobal.getMetaManager().loadKeyEntryList();
             final List<PickRow> rows = new ArrayList<>();
             for (KeyStoreManager.KeyEntry k : keys) {
                 PickRow pr = new PickRow(k);

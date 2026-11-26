@@ -1,11 +1,14 @@
 package com.lgns.ui.activity;
 
+import android.content.res.ColorStateList;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.view.LayoutInflater;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.widget.ArrayAdapter;
+import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.Spinner;
 import android.widget.TextView;
@@ -21,7 +24,9 @@ import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.lgns.R;
 import com.lgns.helper.StatusTipDialog;
 import com.lgns.manager.AddressBookManager;
+import com.lgns.manager.AppGlobal;
 import com.lgns.manager.AppLogDbHelper;
+import com.lgns.manager.KeyStoreManager;
 import com.lgns.model.AddressItem;
 import com.lgns.ui.adapter.AddressAdapter;
 import com.lgns.util.Web3AndroidUtil;
@@ -31,6 +36,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 /**
@@ -100,6 +106,8 @@ public class AddressManageActivity extends BaseActivity implements AddressAdapte
 
         findViewById(R.id.btn_back).setOnClickListener(v -> onBackPressed());
         findViewById(R.id.btn_ratio_default).setOnClickListener(v -> showDefaultsDialog());
+        // 导入私钥：从私钥管理列表选号，只带地址建接收方（弹窗复用归集支付方那套布局）
+        findViewById(R.id.btn_import_key).setOnClickListener(v -> showImportDialog());
         // 全局全选/反选：作用于所有接收方；分组级入口在组头上，同一套执行链路
         findViewById(R.id.bulk_sel_all).setOnClickListener(v -> applyBulkEnabled(null, true));
         findViewById(R.id.bulk_invert).setOnClickListener(v -> applyBulkEnabled(null, false));
@@ -399,6 +407,210 @@ public class AddressManageActivity extends BaseActivity implements AddressAdapte
                 });
             }
         }).start();
+    }
+
+    // endregion
+
+    // region 导入私钥
+
+    /** 弹窗里的一行：私钥管理记录 + 地址是否已在接收方列表 + 本次是否勾选 */
+    private static class PickRow {
+        final KeyStoreManager.KeyEntry entry;
+        /** 地址已在接收方列表的行置灰，防止同一地址出现两条接收方 */
+        boolean exists;
+        boolean picked;
+
+        PickRow(KeyStoreManager.KeyEntry entry) {
+            this.entry = entry;
+        }
+
+        /** 地址缺失的旧私钥不能导入：接收方表就是按地址建的，没地址无从带入 */
+        boolean selectable() {
+            return !exists && entry.address != null && !entry.address.isEmpty();
+        }
+    }
+
+    /**
+     * 导入私钥弹窗：复用归集支付方的弹窗布局，从私钥管理列表选号，
+     * 只带入其钱包地址建接收方。
+     *
+     * <p>与归集支付方的差异：接收方表存的是地址本身而不是 key_id 引用，
+     * 导入后两边不再联动；收益比例与数额按右上角齿轮的默认值预填，
+     * 导入后可进行内编辑单独改。</p>
+     *
+     * <p>逐条落库受 100% 比例上限约束：触顶即停在中途，已导入的保留
+     * （与全选/反选的触顶处理同口径），失败原因随成功数一起弹提示。</p>
+     */
+    private void showImportDialog() {
+        View view = LayoutInflater.from(this).inflate(R.layout.dialog_collect_import_key, null);
+        RecyclerView rvKeys = view.findViewById(R.id.rv_import_keys);
+        View tvImportEmpty = view.findViewById(R.id.tv_import_empty);
+        TextView tvSubtitle = view.findViewById(R.id.tv_import_subtitle);
+        // 归集版副标题写的是「只建引用不复制私钥」，接收方语义不同，这里覆盖
+        tvSubtitle.setText(R.string.address_import_subtitle);
+        AlertDialog dialog = new AlertDialog.Builder(this, R.style.AppDialog)
+                .setView(view)
+                .create();
+        dialog.show();
+
+        final List<PickRow> pickRows = new ArrayList<>();
+        final RecyclerView.Adapter<?> pickAdapter = new RecyclerView.Adapter<RecyclerView.ViewHolder>() {
+            @NonNull
+            @Override
+            public RecyclerView.ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+                return new RecyclerView.ViewHolder(LayoutInflater.from(parent.getContext())
+                        .inflate(R.layout.item_collect_import_key, parent, false)) { };
+            }
+
+            @Override
+            public void onBindViewHolder(@NonNull RecyclerView.ViewHolder holder, int position) {
+                PickRow pr = pickRows.get(position);
+                CheckBox cb = holder.itemView.findViewById(R.id.cb_pick);
+                TextView tvBadge = holder.itemView.findViewById(R.id.tv_badge);
+                TextView tvCode = holder.itemView.findViewById(R.id.tv_code);
+                TextView tvAddr = holder.itemView.findViewById(R.id.tv_addr);
+                TextView tvState = holder.itemView.findViewById(R.id.tv_state);
+
+                String label = pr.entry.customCode == null || pr.entry.customCode.isEmpty()
+                        ? (pr.entry.address == null || pr.entry.address.isEmpty()
+                                ? "?" : shortAddr(pr.entry.address))
+                        : pr.entry.customCode;
+                tvCode.setText(label);
+                tvBadge.setText(label.isEmpty() ? "?"
+                        : String.valueOf(label.charAt(0)).toUpperCase());
+                tvBadge.setBackgroundTintList(ColorStateList.valueOf(
+                        BADGE_COLORS[Math.abs(label.hashCode() % BADGE_COLORS.length)]));
+                tvAddr.setText(pr.entry.address == null || pr.entry.address.isEmpty()
+                        ? getString(R.string.collect_key_no_addr) : shortAddr(pr.entry.address));
+
+                cb.setOnCheckedChangeListener(null);
+                cb.setEnabled(pr.selectable());
+                cb.setChecked(pr.picked);
+                cb.setOnCheckedChangeListener((b, checked) -> pr.picked = checked);
+                if (pr.exists) {
+                    tvState.setVisibility(View.VISIBLE);
+                    tvState.setText(R.string.collect_import_state_done);
+                } else if (!pr.selectable()) {
+                    tvState.setVisibility(View.VISIBLE);
+                    tvState.setText(R.string.collect_key_no_addr);
+                } else {
+                    tvState.setVisibility(View.GONE);
+                }
+                holder.itemView.setOnClickListener(v -> {
+                    if (pr.selectable()) cb.setChecked(!cb.isChecked());
+                });
+            }
+
+            @Override
+            public int getItemCount() {
+                return pickRows.size();
+            }
+        };
+        rvKeys.setLayoutManager(new LinearLayoutManager(this));
+        rvKeys.setAdapter(pickAdapter);
+
+        // 读私钥列表 + 判定地址是否已在接收方表都涉及查库，放后台线程再回来灌数据
+        new Thread(() -> {
+            // 纯元数据读取走 getMetaManager：loadKeyEntryList 只用 SQLite、不碰密码，
+            // 会话过期/直启未解锁时照常返回，不像 getKeyStoreManager 那样抛「会话已过期」
+            final List<KeyStoreManager.KeyEntry> keys =
+                    AppGlobal.getMetaManager().loadKeyEntryList();
+            final List<PickRow> rows = new ArrayList<>();
+            for (KeyStoreManager.KeyEntry k : keys) {
+                PickRow pr = new PickRow(k);
+                pr.exists = k.address != null && !k.address.isEmpty()
+                        && book.addressExists(k.address.trim().toLowerCase(Locale.ROOT), -1);
+                rows.add(pr);
+            }
+            runOnUiThread(() -> {
+                if (isFinishing()) return;
+                pickRows.clear();
+                pickRows.addAll(rows);
+                pickAdapter.notifyDataSetChanged();
+                // 空态用独立 TextView 切换，不塞给 RecyclerView，避免布局套布局
+                boolean empty = pickRows.isEmpty();
+                rvKeys.setVisibility(empty ? View.GONE : View.VISIBLE);
+                tvImportEmpty.setVisibility(empty ? View.VISIBLE : View.GONE);
+            });
+        }).start();
+
+        // 全选/反选只作用于可勾选行：已导入的永远保持灰着
+        view.findViewById(R.id.dlg_sel_all).setOnClickListener(v -> {
+            for (PickRow pr : pickRows) {
+                if (pr.selectable()) pr.picked = true;
+            }
+            pickAdapter.notifyDataSetChanged();
+        });
+        view.findViewById(R.id.dlg_invert).setOnClickListener(v -> {
+            for (PickRow pr : pickRows) {
+                if (pr.selectable()) pr.picked = !pr.picked;
+            }
+            pickAdapter.notifyDataSetChanged();
+        });
+
+        view.findViewById(R.id.btn_dialog_cancel).setOnClickListener(v -> dialog.dismiss());
+        view.findViewById(R.id.btn_dialog_confirm).setOnClickListener(v -> {
+            final List<KeyStoreManager.KeyEntry> selected = new ArrayList<>();
+            for (PickRow pr : pickRows) {
+                if (pr.picked && pr.selectable()) selected.add(pr.entry);
+            }
+            if (selected.isEmpty()) {
+                Toast.makeText(this, pickRows.isEmpty()
+                                ? R.string.collect_import_empty
+                                : R.string.collect_import_none_selected,
+                        Toast.LENGTH_SHORT).show();
+                return;
+            }
+            // 编号与分组沿用私钥记录（与归集支付方导入同口径），比例与数额用右上角默认值
+            final String ratio = book.getRatioDefault();
+            final String amount = book.getAmountDefault();
+            new Thread(() -> {
+                int ok = 0;
+                String err = null;
+                for (KeyStoreManager.KeyEntry k : selected) {
+                    try {
+                        book.addAddress(k.customCode, k.groupNo, k.address, ratio, amount);
+                        ok++;
+                    } catch (Exception e) {
+                        // 比例触 100% 上限或写库失败：停在中途，已导入的保留
+                        err = Web3AndroidUtil.safeMessage(e);
+                        break;
+                    }
+                }
+                final int fOk = ok;
+                final String fErr = err;
+                runOnUiThread(() -> {
+                    dialog.dismiss();
+                    if (fOk > 0) {
+                        String msg = getString(R.string.address_import_saved_fmt, fOk);
+                        if (fErr != null) msg = msg + "，" + fErr;
+                        Toast.makeText(this, msg, Toast.LENGTH_LONG).show();
+                    } else if (fErr != null) {
+                        Toast.makeText(this, fErr, Toast.LENGTH_LONG).show();
+                    } else {
+                        Toast.makeText(this, R.string.collect_import_all_exists,
+                                Toast.LENGTH_LONG).show();
+                    }
+                    loadData();
+                });
+            }).start();
+        });
+    }
+
+    /** 徽标取色盘：与归集支付方弹窗及 PayerAdapter 私有一致，同一账号同一颜色 */
+    private static final int[] BADGE_COLORS = {
+            0xFF5C6BC0, 0xFF26A69A, 0xFFEF5350, 0xFFAB47BC,
+            0xFF42A5F5, 0xFFFFA726, 0xFF66BB6A, 0xFFEC407A,
+            0xFF8D6E63, 0xFF78909C
+    };
+
+    /** 地址缩略：与主界面账号行同口径，0x1234...abcd */
+    private String shortAddr(String addr) {
+        if (addr == null || addr.isEmpty()) return getString(R.string.key_addr_unknown);
+        if (addr.length() > 10) {
+            return addr.substring(0, 6) + "..." + addr.substring(addr.length() - 4);
+        }
+        return addr;
     }
 
     // endregion

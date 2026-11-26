@@ -182,7 +182,7 @@ public class AddressAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder
         h.tvBadge.setBackgroundTintList(ColorStateList.valueOf(
                 BADGE_COLORS[Math.abs(it.address.hashCode()) % BADGE_COLORS.length]));
         h.tvCode.setText(it.label());
-        h.tvAddr.setText(it.address);
+        h.tvAddr.setText(shortAddr(h, it.address));
         h.tvRatio.setText(it.ratio + "%");
         // 数额为 0 时整块隐掉：按数额转账时它本来就不参与，按比例转账时又全是无效信息，
         // 满屏「0 fLGNS」只会把真正设了数额的那几行淹掉
@@ -215,6 +215,17 @@ public class AddressAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder
     @Override
     public int getItemCount() {
         return visible.size();
+    }
+
+    /** 地址缩略：6+4 字符，空地址回落到「未知」，与支付方列表同口径，避免长地址撑变形卡片 */
+    private String shortAddr(RecyclerView.ViewHolder h, String addr) {
+        if (addr == null || addr.isEmpty()) {
+            return h.itemView.getContext().getString(R.string.key_addr_unknown);
+        }
+        if (addr.length() > 10) {
+            return addr.substring(0, 6) + "..." + addr.substring(addr.length() - 4);
+        }
+        return addr;
     }
 
     // endregion

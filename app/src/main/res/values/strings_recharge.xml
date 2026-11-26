@@ -71,6 +71,9 @@
     <string name="err_duplicate">该地址已存在</string>
     <string name="cd_ratio_default">设置新增接收方的默认比例与默认数额</string>
     <string name="cd_add_address">添加接收方</string>
+    <!-- 接收方导入私钥：复用归集弹窗布局，带入地址与分组，比例与数额用右上角默认值 -->
+    <string name="address_import_subtitle">从私钥管理列表选择账号；带入其地址与分组建接收方，比例与数额用右上角默认值</string>
+    <string name="address_import_saved_fmt">成功导入 %1$d 个接收方</string>
 
     <!-- 支付方管理 -->
     <string name="payer_add_title">新增支付方</string>
