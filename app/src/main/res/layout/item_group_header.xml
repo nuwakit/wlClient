@@ -28,6 +28,22 @@
         android:textSize="13sp"
         android:textStyle="bold" />
 
+    <!-- 组内今日冠军数：只主界面账号列表用（AccountStatsAdapter 回填并恒置可见，为 0 也显示）；
+         其余复用本布局的页面不回填，保持默认隐藏，避免空胶囊 -->
+    <TextView
+        android:id="@+id/tv_group_champion"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="6dp"
+        android:background="@drawable/bg_pill_gray"
+        android:paddingStart="8dp"
+        android:paddingTop="1dp"
+        android:paddingEnd="8dp"
+        android:paddingBottom="1dp"
+        android:textColor="#FFFF5722"
+        android:textSize="10sp"
+        android:visibility="gone" />
+
     <TextView
         android:id="@+id/tv_group_count"
         android:layout_width="wrap_content"

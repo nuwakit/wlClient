@@ -192,10 +192,21 @@ public class AccountStatsAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
             h.tvGroupName.setText(item.groupName);
             h.viewColor.setBackgroundColor(getBadgeColor(item.groupName));
             int count = 0;
+            int todayChamp = 0;
             for (DisplayItem d : allList) {
-                if (d.type == TYPE_ACCOUNT && d.groupName.equals(item.groupName)) count++;
+                if (d.type == TYPE_ACCOUNT && d.groupName.equals(item.groupName)) {
+                    count++;
+                    // todayChampion < 0 是「链上还没查到」：不计数，也不拿它凑 0
+                    if (d.account != null && d.account.todayChampion >= 0) {
+                        todayChamp += d.account.todayChampion;
+                    }
+                }
             }
-            h.tvGroupCount.setText(h.itemView.getContext().getString(R.string.common_count_fmt, count));
+            h.tvGroupCount.setText(h.itemView.getContext().getString(R.string.stats_group_count_fmt, count));
+            // 组内今日冠军数：恒显示（按用户要求不隐藏），未查到/为 0 时显示「0 个冠军」
+            h.tvGroupChampion.setVisibility(View.VISIBLE);
+            h.tvGroupChampion.setText(
+                    h.itemView.getContext().getString(R.string.stats_group_champion_fmt, todayChamp));
             boolean expanded = expandedMap.getOrDefault(item.groupName, true);
             h.ivExpand.setRotation(expanded ? 90 : 0);
             h.itemView.setOnClickListener(v -> toggleGroup(item.groupName));
@@ -297,9 +308,9 @@ public class AccountStatsAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
 
     // region ViewHolder
 
-    /** 分组头 ViewHolder：组名 + 人数 + 颜色条 + 展开箭头 */
+    /** 分组头 ViewHolder：组名 + 今日冠军数 + 账号数 + 颜色条 + 展开箭头 */
     static class HeaderVH extends RecyclerView.ViewHolder {
-        TextView tvGroupName, tvGroupCount;
+        TextView tvGroupName, tvGroupCount, tvGroupChampion;
         View viewColor;
         ImageView ivExpand;
 
@@ -307,6 +318,7 @@ public class AccountStatsAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
             super(v);
             tvGroupName = v.findViewById(R.id.tv_group_name);
             tvGroupCount = v.findViewById(R.id.tv_group_count);
+            tvGroupChampion = v.findViewById(R.id.tv_group_champion);
             viewColor = v.findViewById(R.id.view_color);
             ivExpand = v.findViewById(R.id.iv_expand);
         }

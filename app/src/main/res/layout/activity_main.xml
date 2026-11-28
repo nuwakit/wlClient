@@ -28,7 +28,8 @@
             android:importantForAccessibility="no"
             android:src="@drawable/ic_lgns" />
 
-        <!-- 标题 + 状态副标题：副标题由 refreshStatusSubtitle() 按「加载/同步/失败/运行中/就绪」切换 -->
+        <!-- 标题 + 状态副标题：标题由 bindViews() 拼上版本号（随 build.gradle 的 versionName）；
+             副标题由 refreshStatusSubtitle() 按「加载/同步/失败/运行中/就绪」切换 -->
         <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
@@ -36,6 +37,7 @@
             android:orientation="vertical">
 
             <TextView
+                android:id="@+id/tv_app_title"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/app_name"

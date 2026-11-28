@@ -30,6 +30,7 @@ import com.lgns.manager.KeyStoreManager;
 import com.lgns.helper.MainDialogHelper;
 import com.lgns.helper.MainMenuHelper;
 import com.lgns.helper.MainDataLoader;
+import com.lgns.BuildConfig;
 import com.lgns.R;
 import com.lgns.task.TaskLogCallback;
 import com.lgns.util.Web3AndroidUtil;
@@ -254,6 +255,9 @@ public class MainActivity extends BaseActivity implements TaskLogCallback, Batch
     private void bindViews() {
         btnSettingGear = findViewById(R.id.btn_setting_gear);
         btnSecurityWarn = findViewById(R.id.btn_security_warn);
+        // 标题后拼版本号：取自 build.gradle 的 versionName，发版改号时这里自动跟随，不用改文案
+        TextView tvAppTitle = findViewById(R.id.tv_app_title);
+        tvAppTitle.setText(getString(R.string.app_name) + " v" + BuildConfig.VERSION_NAME);
         tvStatusSub = findViewById(R.id.tv_status_sub);
         btnBatchEnter = findViewById(R.id.btn_batch_enter);
         btnBatchClaim = findViewById(R.id.btn_batch_claim);

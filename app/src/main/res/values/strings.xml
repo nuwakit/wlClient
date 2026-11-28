@@ -29,6 +29,8 @@
     <string name="common_placeholder" translatable="false">--</string>
     <string name="common_ungrouped">未分组</string>
     <string name="common_count_fmt">%1$d 个</string>
+    <string name="stats_group_count_fmt">%1$d 个账号</string>
+    <string name="stats_group_champion_fmt">%1$d 个冠军</string>
     <string name="common_items_fmt">共 %1$d 条</string>
     <string name="common_total_fmt">共 %1$d 个</string>
     <string name="common_error">错误</string>
